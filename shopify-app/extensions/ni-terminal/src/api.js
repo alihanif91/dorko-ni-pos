@@ -1,27 +1,25 @@
 // Client for our own middleware. The extension never talks to Network
 // International directly: NI credentials live only on the server.
 //
-// Every request carries a Shopify session token so the middleware can reject
-// anyone who isn't a signed-in POS session on an approved store.
-
-// Set per environment before deploy. Dev: the tunnel URL from
-// `shopify app dev` or a local tunnel. Prod: the client's server.
-export const MIDDLEWARE_URL = 'https://example.com';
+// Relative URLs resolve against the app's application_url (the dev tunnel
+// during `shopify app dev`, the client's server in production), and POS
+// attaches the Shopify session token automatically. Needs POS 10.6+ and
+// the POS user signed in with permission for this app.
 
 async function call(path, options = {}) {
-  const token = await shopify.session.getSessionToken();
-  if (!token) {
-    throw new Error('Not authorised on this POS device. Ask a manager to check app permissions.');
+  let res;
+  try {
+    res = await fetch(path, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    });
+  } catch (err) {
+    throw new Error('Could not reach the payment server. Check the iPad is online.');
   }
-  const res = await fetch(`${MIDDLEWARE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...(options.headers || {}),
-    },
-  });
   const body = await res.json().catch(() => ({}));
+  if (res.status === 401) {
+    throw new Error('This POS login has no permission for the NI payment app. Ask a manager.');
+  }
   if (!res.ok) {
     throw new Error(body.error || `Server error (${res.status})`);
   }

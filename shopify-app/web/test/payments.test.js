@@ -7,7 +7,7 @@ import { createPayments, NotFoundError } from '../src/payments.js';
 import { createServer } from '../src/server.js';
 import { newSourceId, isValidSourceId } from '../src/sourceId.js';
 import { verifySessionToken } from '../src/auth.js';
-import { toMinorUnits, cartPaymentState, PROP } from '../../shopify-app/extensions/ni-terminal/src/cart.js';
+import { toMinorUnits, cartPaymentState, PROP } from '../../extensions/ni-terminal/src/cart.js';
 
 const SHOP = 'dorko-dev.myshopify.com';
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

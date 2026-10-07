@@ -68,7 +68,7 @@ down once we're building.
 - **POS polls the middleware; the middleware calls NI in the background.**
   This makes the POS side identical whether NI is synchronous or
   callback-based, so that open question now only affects
-  `middleware/src/ni/`.
+  `shopify-app/web/src/ni/`.
 - **Stale approval guard:** if the cart total changes after approval, the
   tile/modal flag it and force a void before re-charging.
 - **Extension → middleware auth:** Shopify session token (HS256 JWT signed

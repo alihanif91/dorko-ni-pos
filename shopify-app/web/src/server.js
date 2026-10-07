@@ -18,6 +18,10 @@ export function createServer({ payments, env = process.env }) {
   });
 
   app.get('/health', (req, res) => res.json({ ok: true }));
+  // The app has no admin screens; this is what opening the app URL shows.
+  app.get('/', (req, res) => {
+    res.type('text').send('Dorko NI Payments: server running. Use the "Pay by card (NI)" tile in Shopify POS.');
+  });
 
   const api = express.Router();
   api.use(requireSession(env));

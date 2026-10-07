@@ -1,0 +1,8 @@
+# Runs the middleware as the app's web process during `shopify app dev`.
+# The CLI gives it a public HTTPS tunnel URL and sets that as the app URL,
+# so the POS extension reaches it with relative URLs.
+name = "middleware"
+roles = ["frontend", "backend"]
+
+[commands]
+dev = "npm run dev"

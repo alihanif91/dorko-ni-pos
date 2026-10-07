@@ -4,9 +4,12 @@
   "version": "0.1.0",
   "type": "module",
   "license": "UNLICENSED",
-  "engines": { "node": ">=22.13" },
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
-    "start": "node --disable-warning=ExperimentalWarning src/index.js",
+    "dev": "node --disable-warning=ExperimentalWarning --env-file-if-exists=dev.env src/index.js",
+    "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env src/index.js",
     "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
   },
   "dependencies": {

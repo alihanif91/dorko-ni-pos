@@ -8,7 +8,7 @@ items) lives in `docs/HANDOVER.md` — read it before doing any work here.
 Shopify POS ↔ Network International Push to Pay integration for Dorko
 Middle East (client: Ziad Yaghi). Two deliverables:
 
-- `middleware/` — the server that talks to NI's Push to Pay API (sale, void,
+- `shopify-app/web/` — the middleware: the server that talks to NI's Push to Pay API (sale, void,
   refund, get-result). Holds credentials, generates/tracks SourceID,
   persists transaction state for timeout recovery.
 - `shopify-app/` — the Shopify app "Dorko NI Payments" (`shopify.app.toml`)
@@ -18,9 +18,15 @@ Middle East (client: Ziad Yaghi). Two deliverables:
   tender. See docs/HANDOVER.md for why this pattern (not a payment-blocking
   hook) is the plan.
 
-## Commands
-- `cd middleware && npm test` — runs all tests (middleware + extension cart logic)
-- `cd middleware && AUTH_DISABLED=true npm start` — local server, mock NI
+## Commands (run from `shopify-app/`)
+- `npm install` — installs the app, the middleware (`web/`) and the extension
+- `npm test` — all tests (middleware + extension cart logic)
+- `npx shopify app dev --store dev-demowork.myshopify.com` — local dev on
+  Ali's machine: runs the middleware with mock NI behind a public tunnel and
+  serves the POS extension to the iPad. The extension calls the middleware
+  with relative URLs; POS resolves them to the app URL and adds the session
+  token automatically (POS 10.6+, POS user must have app permission).
+- Middleware on its own: `cd web && AUTH_DISABLED=true npm run dev`
 
 ## Status as of 7 Oct 2026
 - Deposit paid (AED 3,700), scope and pricing locked
