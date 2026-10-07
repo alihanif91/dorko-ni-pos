@@ -36,9 +36,12 @@ Middle East (client: Ziad Yaghi). Two deliverables:
   should mock NI responses and be structured so swapping in real
   credentials/endpoints later is a small change, not a rewrite
 - Phase 0 code written 7 Oct: middleware (mock NI, SourceID, SQLite state,
-  timeout recovery, void, session-token auth) with 13 passing tests; POS
-  extension tile + modal written but NOT yet run on a device. Next: link the
-  app with Shopify CLI and preview on Ali's dev store.
+  timeout recovery, void, session-token auth) with 13 passing tests.
+- 7 Oct: first end-to-end test passed on iPhone POS against dorko-ni-dev
+  (mock NI): order #1001 paid via "Card – Network International", with
+  `_ni_source_id`, `_ni_amount`, `_ni_approval_code`, `_ni_rrn` confirmed as
+  order customAttributes via Admin API. Decline (.13) and recovery (.99)
+  tests next; iPad layout check still to do.
 
 ## Where Shopify commands run
 - Dev store: `dorko-ni-dev.myshopify.com` (Enigma Logics org, Grow plan,
