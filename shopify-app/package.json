@@ -1,0 +1,15 @@
+{
+  "name": "dorko-ni-payments",
+  "private": true,
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "workspaces": ["extensions/*"],
+  "scripts": {
+    "shopify": "shopify",
+    "dev": "shopify app dev",
+    "deploy": "shopify app deploy"
+  },
+  "devDependencies": {
+    "@shopify/cli": "^4.8.5"
+  }
+}

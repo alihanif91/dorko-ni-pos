@@ -34,6 +34,15 @@ Middle East (client: Ziad Yaghi). Two deliverables:
   extension tile + modal written but NOT yet run on a device. Next: link the
   app with Shopify CLI and preview on Ali's dev store.
 
+## Where Shopify commands run
+- Dev store: `dev-demowork.myshopify.com`. App client ID is in
+  `shopify-app/shopify.app.toml`.
+- The claude.ai cloud workspace cannot reach any Shopify host (network
+  allowlist blocks accounts.shopify.com, partners/app.shopify.com,
+  *.myshopify.com). Shopify CLI (`shopify app dev/deploy`, login) must run on
+  Ali's own machine. Cloud sessions write code and push; the local session
+  pulls and runs the CLI.
+
 ## Before writing code against real NI docs
 Re-read `docs/HANDOVER.md`'s architecture section against whatever NI sends
 — specifically whether Push to Pay is synchronous request/response or
