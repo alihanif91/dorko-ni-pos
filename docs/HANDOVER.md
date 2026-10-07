@@ -77,6 +77,21 @@ down once we're building.
   check the cashier tendered "Card – Network International" for the approved
   amount.
 
+### Store setup learned on the dev store (7 Oct 2026) — repeat for Dorko at go-live
+- **"Card – Network International" is a POS custom payment type**, added in
+  admin: Sales channels → Point of Sale → Customize the in-store experience →
+  POS app (Edit) → Checkout → Add custom payment type. NOT Settings → Payments
+  → Manual payment methods (that is online checkout only and never shows in
+  POS), and the POS app itself has no add option.
+- POS must be logged in with a user account and the app's permission prompt
+  approved on the device, or the extension gets no session token (every
+  middleware call 401s). Staff on Dorko's iPad will see the same prompt.
+- Dev preview on a device: in the Dev Console, use the **Mobile** link on the
+  `ni-terminal` row (a `com.shopify.pos://` link), not the app row's link,
+  which only opens the admin. Open it in Safari or via the Camera app; Chrome
+  on iOS doesn't hand off to POS.
+- Tested on iPhone POS on 7 Oct; iPad layout check still to do before go-live.
+
 ### Mock terminal (until NI docs arrive)
 `NI_MODE=mock`. Amount ending .13 → declined; ending .99 → sale call drops,
 only Get Result settles it (timeout recovery path); anything else approved.
