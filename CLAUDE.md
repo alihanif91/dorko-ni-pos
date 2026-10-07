@@ -21,7 +21,7 @@ Middle East (client: Ziad Yaghi). Two deliverables:
 ## Commands (run from `shopify-app/`)
 - `npm install` — installs the app, the middleware (`web/`) and the extension
 - `npm test` — all tests (middleware + extension cart logic)
-- `npx shopify app dev --store dev-demowork.myshopify.com` — local dev on
+- `npx shopify app dev --store dorko-ni-dev.myshopify.com` — local dev on
   Ali's machine: runs the middleware with mock NI behind a public tunnel and
   serves the POS extension to the iPad. The extension calls the middleware
   with relative URLs; POS resolves them to the app URL and adds the session
@@ -41,7 +41,9 @@ Middle East (client: Ziad Yaghi). Two deliverables:
   app with Shopify CLI and preview on Ali's dev store.
 
 ## Where Shopify commands run
-- Dev store: `dev-demowork.myshopify.com`. App client ID is in
+- Dev store: `dorko-ni-dev.myshopify.com` (Enigma Logics org, Grow plan,
+  created in the Dev Dashboard; old Partner Dashboard dev stores like
+  dev-demowork are invisible to the CLI). App client ID is in
   `shopify-app/shopify.app.toml`.
 - The claude.ai cloud workspace cannot reach any Shopify host (network
   allowlist blocks accounts.shopify.com, partners/app.shopify.com,
