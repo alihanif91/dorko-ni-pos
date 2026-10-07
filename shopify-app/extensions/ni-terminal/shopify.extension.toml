@@ -4,6 +4,7 @@ api_version = "2026-07"
 type = "ui_extension"
 name = "NI Card Terminal"
 handle = "ni-terminal"
+uid = "a0afbc17-d216-4e61-875a-19d2523083df115f5fa4"
 description = "Sends the cart total to the Network International terminal"
 
 [[extensions.targeting]]
