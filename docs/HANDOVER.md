@@ -92,6 +92,17 @@ down once we're building.
   on iOS doesn't hand off to POS.
 - Tested on iPhone POS on 7 Oct; iPad layout check still to do before go-live.
 
+### Client decisions, 7 Oct 2026 (Ziad)
+- Terminal: full-size N-Genius **with printer** (the M90 in NI's supported
+  list), not OMA485/SR800. Reason given: fixed retail counter.
+- **Two terminals: one main, one backup.** Contract scope is one terminal;
+  how the backup is handled (failover switch vs. two live terminals) and
+  whether it's billed is Ali's call, not yet decided.
+- Terminal receipts **printed on demand only**, not after every
+  transaction. Needs NI to confirm whether that's a terminal setting or a
+  per-request flag in Push to Pay.
+- Ziad is following up with NI on the DOU.
+
 ### Mock terminal (until NI docs arrive)
 `NI_MODE=mock`. Amount ending .13 → declined; ending .99 → sale call drops,
 only Get Result settles it (timeout recovery path); anything else approved.
