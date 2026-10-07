@@ -1,0 +1,18 @@
+api_version = "2026-07"
+
+[[extensions]]
+type = "ui_extension"
+name = "NI Card Terminal"
+handle = "ni-terminal"
+description = "Sends the cart total to the Network International terminal"
+
+[[extensions.targeting]]
+module = "./src/Tile.jsx"
+target = "pos.home.tile.render"
+
+[[extensions.targeting]]
+module = "./src/Modal.jsx"
+target = "pos.home.modal.render"
+
+[extensions.capabilities]
+network_access = true

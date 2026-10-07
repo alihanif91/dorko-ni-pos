@@ -50,10 +50,36 @@ stored original reference — not just rely on Shopify's own refund record.
 Exact hook point (order-details / return screen target) still to be nailed
 down once we're building.
 
-**This is provisional pending NI's actual docs** — if Push to Pay turns out
-to be callback/webhook-based rather than synchronous request/response, the
-modal's wait logic needs to change accordingly. Re-check against the real
-docs before finalizing.
+**This is provisional pending NI's actual docs.**
+
+### Decisions made 7 Oct 2026 (supersede the steps above where they differ)
+- **One Shopify app: "Dorko NI Payments"** (client ID in
+  `shopify-app/shopify.app.toml`), scopes `read_orders,write_orders`. It holds
+  the POS extension, and the middleware gets its store token from the same
+  app's install. Distribution method deliberately NOT chosen yet (permanent
+  once set); set custom distribution for 6zhh3e-ne.myshopify.com in Phase 2.
+- **Build on Ali's dev store first.** `shopify app dev` previews only on dev
+  stores, so nothing touches Dorko's live POS until Phase 2.
+- **NI reference goes on the order via cart properties**, not a
+  post-purchase Admin API write. After approval the modal calls
+  `shopify.cart.addCartProperties` with `_ni_source_id`, `_ni_amount`,
+  `_ni_approval_code`, `_ni_rrn`; these carry through to the order. To verify
+  on the dev store: how they appear on the order record.
+- **POS polls the middleware; the middleware calls NI in the background.**
+  This makes the POS side identical whether NI is synchronous or
+  callback-based, so that open question now only affects
+  `middleware/src/ni/`.
+- **Stale approval guard:** if the cart total changes after approval, the
+  tile/modal flag it and force a void before re-charging.
+- **Extension → middleware auth:** Shopify session token (HS256 JWT signed
+  with the app secret), verified on every request, shop allow-list enforced.
+- Possible later safety net: `pos.transaction-complete.event.observe` to
+  check the cashier tendered "Card – Network International" for the approved
+  amount.
+
+### Mock terminal (until NI docs arrive)
+`NI_MODE=mock`. Amount ending .13 → declined; ending .99 → sale call drops,
+only Get Result settles it (timeout recovery path); anything else approved.
 
 ## Commercials
 - $2,000 / AED 7,400, fixed, 50/50

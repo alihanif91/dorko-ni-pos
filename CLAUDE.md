@@ -11,10 +11,16 @@ Middle East (client: Ziad Yaghi). Two deliverables:
 - `middleware/` — the server that talks to NI's Push to Pay API (sale, void,
   refund, get-result). Holds credentials, generates/tracks SourceID,
   persists transaction state for timeout recovery.
-- `pos-extension/` — Shopify POS UI Extension (Smart Grid tile + modal) that
-  triggers the middleware before the cashier selects the custom "Card –
-  Network International" payment tender. See docs/HANDOVER.md for why this
-  pattern (not a payment-blocking hook) is the plan.
+- `shopify-app/` — the Shopify app "Dorko NI Payments" (`shopify.app.toml`)
+  and its POS UI Extension in `extensions/ni-terminal/` (Smart Grid tile +
+  modal, API 2026-07, Preact web components) that runs the terminal payment
+  before the cashier selects the custom "Card – Network International"
+  tender. See docs/HANDOVER.md for why this pattern (not a payment-blocking
+  hook) is the plan.
+
+## Commands
+- `cd middleware && npm test` — runs all tests (middleware + extension cart logic)
+- `cd middleware && AUTH_DISABLED=true npm start` — local server, mock NI
 
 ## Status as of 7 Oct 2026
 - Deposit paid (AED 3,700), scope and pricing locked
@@ -23,6 +29,10 @@ Middle East (client: Ziad Yaghi). Two deliverables:
 - Nothing here has been tested against real NI endpoints yet; current work
   should mock NI responses and be structured so swapping in real
   credentials/endpoints later is a small change, not a rewrite
+- Phase 0 code written 7 Oct: middleware (mock NI, SourceID, SQLite state,
+  timeout recovery, void, session-token auth) with 13 passing tests; POS
+  extension tile + modal written but NOT yet run on a device. Next: link the
+  app with Shopify CLI and preview on Ali's dev store.
 
 ## Before writing code against real NI docs
 Re-read `docs/HANDOVER.md`'s architecture section against whatever NI sends
