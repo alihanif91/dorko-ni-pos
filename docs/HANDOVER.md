@@ -95,9 +95,10 @@ down once we're building.
 ### Client decisions, 7 Oct 2026 (Ziad)
 - Terminal: full-size N-Genius **with printer** (the M90 in NI's supported
   list), not OMA485/SR800. Reason given: fixed retail counter.
-- **Two terminals: one main, one backup.** Contract scope is one terminal;
-  how the backup is handled (failover switch vs. two live terminals) and
-  whether it's billed is Ali's call, not yet decided.
+- **Two terminals: one main, one backup.** Decided by Ali 7 Oct: backup is
+  included at **no extra cost** as a **failover switch** (one active
+  terminal at a time; staff can switch to the backup in POS if the main one
+  fails). Two terminals live at once (e.g. two tills) stays out of scope.
 - Terminal receipts **printed on demand only**, not after every
   transaction. Needs NI to confirm whether that's a terminal setting or a
   per-request flag in Push to Pay.
