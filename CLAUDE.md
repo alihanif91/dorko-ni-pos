@@ -30,8 +30,8 @@ Middle East (client: Ziad Yaghi). Two deliverables:
 
 ## Status as of 7 Oct 2026
 - Deposit paid (AED 3,700), scope and pricing locked
-- NI docs and test terminal NOT yet received — blocked on client signing
-  the DOU with Network International
+- DOU signed by the client (7 Oct). NI docs and test terminal NOT yet
+  received — waiting on Network International to release them
 - Nothing here has been tested against real NI endpoints yet; current work
   should mock NI responses and be structured so swapping in real
   credentials/endpoints later is a small change, not a rewrite

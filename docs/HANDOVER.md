@@ -102,7 +102,8 @@ down once we're building.
 - Terminal receipts **printed on demand only**, not after every
   transaction. Needs NI to confirm whether that's a terminal setting or a
   per-request flag in Push to Pay.
-- Ziad is following up with NI on the DOU.
+- **DOU signed by Ziad (confirmed 7 Oct 2026)**; waiting on NI to release
+  docs, test cases and test terminal (asked for an M90 delivered to Ali).
 
 ### Mock terminal (until NI docs arrive)
 `NI_MODE=mock`. Amount ending .13 → declined; ending .99 → sale call drops,
