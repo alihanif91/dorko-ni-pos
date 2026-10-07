@@ -1,0 +1,124 @@
+# Dorko Middle East — Shopify POS × Network International Push to Pay
+Handover brief for Claude Code — last updated 7 Oct 2026
+
+## Client
+- D R K Fashion Trading LLC SPC, trading as Dorko Middle East (Reem Mall, Abu Dhabi)
+- Contact: Ziad Yaghi — ziad@drk.me
+- Store: 6zhh3e-ne.myshopify.com
+- NI merchant ID: 20060370929
+
+## What we're building
+A Shopify POS integration with Network International's Push to Pay cloud API.
+Cashier taps "Card – Network International" (a custom/manual Shopify payment
+type) → exact cart total sent to the NI terminal → approval/decline returns →
+sale recorded in Shopify with the NI transaction reference attached.
+
+Scope: sale, void, full refund, timeout recovery via NI's Get Result call
+(lookup by SourceID, max 15 alphanumeric chars, self-generated — Shopify order
+names won't reliably fit the cap). NI certification included, one re-test round.
+
+Hardware at the store: iPad Air, Shopify POS Connector Hub, Epson TM-m30III
+receipt printer, Zebra DS2278-SR scanner, cash drawer cabled to the printer.
+NI-supported terminals: M90 (built-in printer), OMA485, SR800 (no printer).
+We've told NI OMA485/SR800 is the better fit since the Epson already prints.
+
+## Why the architecture is what it is (read before changing it)
+Checked Shopify's current POS UI Extension targets: every purchase-related
+target (`pos.purchase.post.block.render` etc.) fires AFTER the sale is
+already completed in Shopify. There is no hook that can block tender
+selection while waiting on an external terminal's response. Confirmed via
+Shopify's own developer forum — not a documentation gap.
+
+Workaround pattern (this is the actual plan, not a fallback):
+1. Cashier builds the cart normally.
+2. A **Smart Grid tile** ("Charge via NI Terminal") on the cart screen is
+   enabled once the cart has a subtotal (subscribes to the live cart total).
+3. Tapping it opens a full-screen **modal** — this is where the blocking
+   happens. Modal calls the middleware with the exact total; middleware calls
+   NI Push to Pay; modal sits on "Processing…" until NI returns
+   approved/declined, or the Get Result fallback is used on timeout.
+4. Only on approval does the modal close and let the cashier select the
+   **"Card – Network International"** custom payment tender and complete the
+   sale normally in Shopify POS.
+5. The post-purchase extension target then fires — used to append the NI
+   transaction reference to the order note/metafield via Admin API, matched
+   by the SourceID already captured in step 3.
+
+Refund flow: Shopify can't auto-reverse a custom/manual payment type, so a
+refund must actively call NI's refund endpoint via the middleware using the
+stored original reference — not just rely on Shopify's own refund record.
+Exact hook point (order-details / return screen target) still to be nailed
+down once we're building.
+
+**This is provisional pending NI's actual docs** — if Push to Pay turns out
+to be callback/webhook-based rather than synchronous request/response, the
+modal's wait logic needs to change accordingly. Re-check against the real
+docs before finalizing.
+
+## Commercials
+- $2,000 / AED 7,400, fixed, 50/50
+- Deposit AED 3,700 received 4 Oct 2026 (INV-2026-1003)
+- Balance AED 3,700 due on go-live
+- ~4 weeks from signed DOU
+- 30 days post-go-live support; after that, $25/hr
+- Out of scope: more terminals/stores, split payments, partial refunds, QR
+  wallets, NI's own charges, extra certification rounds (billed $25/hr),
+  Shopify/hardware/server costs
+- No hosting fee to Ali — Ziad buys his own small cloud server
+  (~$6–8/mo) before go-live; build/test happens on Ali's own test server
+  until then
+- SensePass was evaluated and ruled out as an off-the-shelf alternative
+
+## Server
+Needs: always-on process (Node/Python), root/SSH access, static IP (NI may
+require one registered against production credentials — unconfirmed, ask
+NI), HTTPS. DigitalOcean Basic Droplet ($6/mo, 1 vCPU/1GB, free static IP) is
+the default recommendation. Ali also has a Hostinger account — only usable if
+it's a VPS/Cloud plan with root access, not shared hosting. Plan not yet
+confirmed as of this writing.
+
+## Network International — what they've told us
+- Shahrukh Ahmed (shahrukh.ahmed@network.global) — integration contact
+- Surgiana Ahmed (surgiana.ahmed@network.global) — account manager
+- Push to Pay: cloud API, Sale / Void / Refund / Get Result
+- Get Result recovers the last transaction status by SourceID — this is the
+  timeout-recovery mechanism
+- Docs + certification test cases released within 24h of signed DOU
+- Test terminal delivered 4–5 working days after DOU signed
+- NI validation takes 3–4 working days after we submit for certification, no
+  fee
+- **Still unanswered by NI**: whether the integrating *application* itself
+  needs separate NI certification, or only the terminal. Asked twice.
+- **Still unanswered by NI**: whether a certified Shopify POS integration
+  already exists in the UAE (Surgiana checking with product team). If yes,
+  the deposit only covers work done to that point — this changes scope.
+
+## Open items (blocking)
+1. DOU signature — not yet confirmed signed as of 7 Oct 2026. This is the
+   critical path; nothing else from NI moves until it's signed.
+2. NI's answer on integration certification requirement.
+3. NI's answer on whether a certified UAE Shopify POS integration exists.
+4. Whether NI needs a server IP or callback URL registered for production
+   credentials.
+
+## Terms agreed with Ziad
+- Everything remote — NI ships the test terminal to Ali, go-live happens on
+  a video call, site visits are available but quoted separately
+- 30 days post-go-live support, then $25/hr
+- If a certified integration already exists per NI, deposit covers work done
+  to that point only
+
+## Separate, not-yet-started item (same client, different scope)
+Ziad wants the Shopify POS receipt reformatted to a proper UAE Tax Invoice —
+header "TAX INVOICE" instead of "SALE", TRN + legal entity name (D R K
+Fashion Trading LLC SPC) at the top, VAT shown as amount-before-VAT → VAT →
+total (he sent an ADNOC receipt as the reference format). This is a Shopify
+POS admin settings job (Settings → Point of Sale → Receipt Customization,
+possibly the newer content-editor version with built-in regional tax ID
+fields), not core dev work, and not priced into the $2,000. Not started yet —
+flag to Ali before bundling it into this build.
+
+## Working style (Ali's standing preferences)
+- Iterative, step-by-step, dry-run before executing anything live
+- Minimal, targeted changes — no unasked-for rewrites
+- Verify each step before moving to the next
