@@ -30,8 +30,9 @@ Middle East (client: Ziad Yaghi). Two deliverables:
 
 ## Status as of 7 Oct 2026
 - Deposit paid (AED 3,700), scope and pricing locked
-- DOU signed by the client (7 Oct). NI docs and test terminal NOT yet
-  received — waiting on Network International to release them
+- Client signed NI's BRD (requirements form) on 4 Oct. The DOU is NOT
+  signed yet: NI will share it after their internal process. No NI docs
+  or test terminal until it's signed.
 - Nothing here has been tested against real NI endpoints yet; current work
   should mock NI responses and be structured so swapping in real
   credentials/endpoints later is a small change, not a rewrite

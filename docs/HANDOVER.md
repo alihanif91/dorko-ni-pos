@@ -102,8 +102,23 @@ down once we're building.
 - Terminal receipts **printed on demand only**, not after every
   transaction. Needs NI to confirm whether that's a terminal setting or a
   per-request flag in Push to Pay.
-- **DOU signed by Ziad (confirmed 7 Oct 2026)**; waiting on NI to release
-  docs, test cases and test terminal (asked for an M90 delivered to Ali).
+- **Correction 7 Oct: the DOU is NOT signed.** What Ziad signed (4 Oct) is
+  NI's **BRD** (requirements form). NI (Shahrukh, 7 Oct) says they've started
+  their internal project process and will *share* the DOU after it.
+
+### NI BRD as filled by the client (signed 4 Oct 2026)
+- ECR: Shopify POS on iOS; integrator: Ali Hanif; 1 outlet, 1 till.
+- 2 terminals (1 primary + 1 backup), full-size countertop **with printer**,
+  receipts printed on demand only.
+- **Expected go-live written as 15 October 2026** — not achievable: contract
+  is ~4 weeks from signed DOU, and the DOU isn't issued yet. Needs correcting
+  with Ziad and NI.
+- Schemes ticked: Visa, MasterCard, Jaywan, UPI, JCB, Diners/Discover, AMEX;
+  DCC yes. These are terminal-side, no build impact.
+- **Also ticked: Alipay, WeChat (QR wallets — out of scope per proposal unless
+  NI handles them inside a normal sale), and Tabby/Tamara (separate BNPL
+  providers, not part of NI Push to Pay at all).**
+- NI states it will provide the API spec plus a Swagger document.
 
 ### Mock terminal (until NI docs arrive)
 `NI_MODE=mock`. Amount ending .13 → declined; ending .99 → sale call drops,
