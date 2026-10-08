@@ -401,7 +401,11 @@ test('shopify client: full refund uses the NI sale, restocks at the POS location
     shop: SHOP, sessionToken: 'jwt', orderId: '9', gateway: 'Card – Network International', restock: true, note: 'n',
   });
   assert.deepEqual(r, { refundId: 'gid://shopify/Refund/77', restocked: true, existing: false });
-  const input = sent.find((b) => b.query.includes('refundCreate')).variables.input;
+  const refundCall = sent.find((b) => b.query.includes('refundCreate'));
+  // Shopify requires an idempotency key on refundCreate since API 2026-04.
+  assert.match(refundCall.query, /@idempotent\(key: \$key\)/);
+  assert.ok(refundCall.variables.key);
+  const input = refundCall.variables.input;
   assert.equal(input.orderId, 'gid://shopify/Order/9');
   assert.deepEqual(input.refundLineItems, [{ lineItemId: 'gid://shopify/LineItem/1', quantity: 2,
     restockType: 'RETURN', locationId: 'gid://shopify/Location/3' }]);

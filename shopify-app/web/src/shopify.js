@@ -5,6 +5,8 @@
 // swapped for an offline Admin API token (read_orders), cached per shop.
 // No OAuth redirect or separate install step is needed.
 
+import { randomUUID } from 'node:crypto';
+
 const API_VERSION = '2026-07';
 
 export function createShopifyClient({ apiKey, apiSecret, tokenStore, fetchImpl = fetch }) {
@@ -113,7 +115,12 @@ export function createShopifyClient({ apiKey, apiSecret, tokenStore, fetchImpl =
       });
 
       const attempt = async (restockType) => {
-        const res = await graphql(shop, token, REFUND_CREATE, { input: build(restockType) });
+        // Shopify requires an idempotency key on refundCreate (API 2026-04+).
+        // A fresh key per attempt is fine: the refunds check above already
+        // stops a second refund being recorded.
+        const res = await graphql(shop, token, REFUND_CREATE, {
+          input: build(restockType), key: randomUUID(),
+        });
         return res.refundCreate;
       };
 
@@ -137,7 +144,8 @@ const REFUND_CONTEXT = `query RefundContext($id: ID!) { order(id: $id) {
 
 const ORDER_LOCATION = 'query OrderLocation($id: ID!) { order(id: $id) { retailLocation { id } } }';
 
-const REFUND_CREATE = `mutation RecordRefund($input: RefundInput!) { refundCreate(input: $input) {
+const REFUND_CREATE = `mutation RecordRefund($input: RefundInput!, $key: String!) {
+  refundCreate(input: $input) @idempotent(key: $key) {
   refund { id } userErrors { field message }
 } }`;
 
