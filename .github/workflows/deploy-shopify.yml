@@ -28,6 +28,19 @@ jobs:
             echo "application_url is still a placeholder; set the test server URL first." >&2
             exit 1
           fi
+      - name: Check the app server is up and rejects requests without a login
+        run: |
+          URL=$(grep '^application_url' shopify.app.toml | cut -d'"' -f2)
+          echo "App server: $URL"
+          # Free hosting may be asleep; give it up to ~90s to wake.
+          for i in 1 2 3 4 5 6; do
+            curl -sf -m 15 "$URL/health" && break
+            echo "waiting for server..."; sleep 15
+          done
+          curl -sf -m 15 "$URL/health" | grep -q '"ok":true'
+          CODE=$(curl -s -m 15 -o /dev/null -w '%{http_code}' -X POST "$URL/api/payments")
+          echo "POST /api/payments without token -> $CODE"
+          test "$CODE" = "401"
       - run: npx shopify app deploy --allow-updates
         env:
           SHOPIFY_APP_AUTOMATION_TOKEN: ${{ secrets.SHOPIFY_APP_AUTOMATION_TOKEN }}

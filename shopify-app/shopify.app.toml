@@ -1,19 +1,20 @@
 # Shopify app config — source of truth for app settings. Deploy pushes this.
 client_id = "8d4579a8f96bbf034a0908c76ed8ca52"
 name = "Dorko NI Payments"
-# Placeholder until the middleware is deployed (Phase 2).
-application_url = "https://example.com"
+# Test server on Render (free plan, mock NI). Moves to the client's server at go-live.
+application_url = "https://dorko-ni-pos.onrender.com"
 embedded = false
 
 [build]
 include_config_on_deploy = true
-automatically_update_urls_on_dev = true
+# Off: `app dev` must not overwrite the deployed server URL.
+automatically_update_urls_on_dev = false
 
 [access_scopes]
 scopes = "read_orders,write_orders"
 
 [auth]
-redirect_urls = ["https://example.com/auth/callback"]
+redirect_urls = ["https://dorko-ni-pos.onrender.com/auth/callback"]
 
 [webhooks]
 api_version = "2026-07"
