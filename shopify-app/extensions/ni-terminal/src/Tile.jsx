@@ -21,7 +21,7 @@ function Tile() {
   const subheading = {
     empty: 'Add items to charge',
     unpaid: `Charge ${formatMinor(info.total, currency)}`,
-    approved: 'Approved. Tender "Card – Network International"',
+    approved: 'Approved: tap Checkout',
     stale: 'Total changed. Tap to fix',
   }[info.state];
 

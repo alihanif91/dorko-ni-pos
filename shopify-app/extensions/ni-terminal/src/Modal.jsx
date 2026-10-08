@@ -55,6 +55,8 @@ function PaymentModal() {
           [PROP.rrn]: result.rrn || '',
         });
         setPhase('approved');
+        // Back to the home screen so the cashier can go straight to Checkout.
+        setTimeout(() => { if (!stopped.current) shopify.navigation.close(); }, 1500);
         return;
       }
       if (result.status === 'declined' || result.status === 'cancelled') {
@@ -127,7 +129,7 @@ function PaymentModal() {
 
           {phase === 'approved' && live.state === 'approved' && (
             <s-banner heading="Approved" tone="success">
-              Close this screen, tap Pay and choose "Card – Network International" for {amountText}.
+              Returning to the cart. Tap Checkout and choose "Card – Network International" for {amountText}.
             </s-banner>
           )}
 
