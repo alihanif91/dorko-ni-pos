@@ -46,8 +46,18 @@ Middle East (client: Ziad Yaghi). Two deliverables:
 - 8 Oct: full refund built (POS order details → "Refund on NI terminal";
   server finds the NI sale via Shopify token exchange + read_orders, then
   refunds on the terminal; staff then record the return in POS). 17 tests
-  pass. Not yet tried on a device. Unverified: whether Shopify's token
-  exchange accepts POS session tokens (docs don't say).
+  pass.
+- 8 Oct: **token exchange with POS session tokens confirmed working** on
+  device (refund lookup on #1001 read the order and correctly reported
+  "not paid on the NI terminal").
+- 8 Oct: test server live on Render free plan (https://dorko-ni-pos.onrender.com,
+  mock NI, data resets on restart). App deployed via GitHub Actions.
+  Deployed POS extensions only appeared after: `[pos] embedded = true`,
+  **custom distribution set to dorko-ni-dev** (permanent; Dorko's store
+  will need a second app at go-live), uninstall + reinstall via the custom
+  distribution link, then activating the app and adding the tile in admin
+  → Point of Sale → POS editor (apps icon). POS labels the order action
+  with the extension description — rename later.
 
 ## Where Shopify commands run
 - Dev store: `dorko-ni-dev.myshopify.com` (Enigma Logics org, Grow plan,
