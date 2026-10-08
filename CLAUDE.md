@@ -57,7 +57,13 @@ Middle East (client: Ziad Yaghi). Two deliverables:
   will need a second app at go-live), uninstall + reinstall via the custom
   distribution link, then activating the app and adding the tile in admin
   → Point of Sale → POS editor (apps icon). POS labels the order action
-  with the extension description — rename later.
+  with the extension description (now "NI card terminal: pay and refund").
+- 8 Oct: **refund is one step** (Ali's requirement): terminal refund, then
+  the server records a full Shopify refund (refundCreate, NI gateway,
+  restock at the order's retailLocation unless REFUND_RESTOCK=false),
+  retried on poll if Shopify fails; never refunds the card twice; an order
+  refunded on the terminal but not in Shopify offers "Record refund in
+  Shopify". Needs scope read_locations (added 8 Oct). 23 tests pass.
 
 ## Where Shopify commands run
 - Dev store: `dorko-ni-dev.myshopify.com` (Enigma Logics org, Grow plan,

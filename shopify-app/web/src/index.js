@@ -22,6 +22,8 @@ const payments = createPayments({
   repo,
   ni,
   shopify,
+  gateway: env.PAYMENT_GATEWAY_NAME || undefined,
+  restock: env.REFUND_RESTOCK !== 'false',
   recoveryAfterMs: Number(env.RECOVERY_AFTER_MS || 20000),
 });
 

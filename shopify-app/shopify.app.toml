@@ -11,7 +11,8 @@ include_config_on_deploy = true
 automatically_update_urls_on_dev = false
 
 [access_scopes]
-scopes = "read_orders,write_orders"
+# read_locations: restock refunded items at the order's POS location.
+scopes = "read_orders,write_orders,read_locations"
 
 [auth]
 redirect_urls = ["https://dorko-ni-pos.onrender.com/auth/callback"]

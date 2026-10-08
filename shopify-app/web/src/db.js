@@ -29,14 +29,26 @@ export function openDb(path = ':memory:') {
       created_at INTEGER NOT NULL
     );
   `);
+  // Columns added after the first release (8 Oct): link refunds to the
+  // Shopify order and record whether Shopify's refund was created.
+  const cols = db.prepare('PRAGMA table_info(transactions)').all().map((c) => c.name);
+  for (const [name, type] of [
+    ['order_id', 'TEXT'], ['shopify_refund_id', 'TEXT'], ['shopify_error', 'TEXT'], ['restocked', 'INTEGER'],
+  ]) {
+    if (!cols.includes(name)) db.exec(`ALTER TABLE transactions ADD COLUMN ${name} ${type}`);
+  }
   return db;
 }
 
 export function makeRepo(db) {
   const insert = db.prepare(`
     INSERT INTO transactions (source_id, shop, type, parent_id, amount_minor, currency,
-      status, staff_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`);
+      status, staff_id, order_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`);
+  const setOrder = db.prepare('UPDATE transactions SET order_id = ? WHERE source_id = ?');
+  const setShopify = db.prepare(`
+    UPDATE transactions SET shopify_refund_id = ?, shopify_error = ?, restocked = ?, updated_at = ?
+    WHERE source_id = ?`);
   const get = db.prepare('SELECT * FROM transactions WHERE source_id = ?');
   const update = db.prepare(`
     UPDATE transactions SET status = ?, approval_code = COALESCE(?, approval_code),
@@ -54,9 +66,10 @@ export function makeRepo(db) {
     refundsOf(parentId) {
       return refundsOf.all(parentId);
     },
-    create({ sourceId, shop, type = 'sale', parentId = null, amountMinor, currency, staffId }) {
+    create({ sourceId, shop, type = 'sale', parentId = null, amountMinor, currency, staffId, orderId = null }) {
       const now = Date.now();
-      insert.run(sourceId, shop, type, parentId, amountMinor, currency, staffId ?? null, now, now);
+      insert.run(sourceId, shop, type, parentId, amountMinor, currency, staffId ?? null,
+        orderId == null ? null : String(orderId), now, now);
       return get.get(sourceId);
     },
     get(sourceId) {
@@ -64,6 +77,14 @@ export function makeRepo(db) {
     },
     setResult(sourceId, { status, approvalCode = null, rrn = null, message = null }) {
       update.run(status, approvalCode, rrn, message, Date.now(), sourceId);
+      return get.get(sourceId);
+    },
+    setOrderId(sourceId, orderId) {
+      setOrder.run(String(orderId), sourceId);
+      return get.get(sourceId);
+    },
+    setShopifyRefund(sourceId, { refundId = null, error = null, restocked = null }) {
+      setShopify.run(refundId, error, restocked == null ? null : (restocked ? 1 : 0), Date.now(), sourceId);
       return get.get(sourceId);
     },
     markRecovery(sourceId) {

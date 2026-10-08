@@ -192,11 +192,21 @@ test('cart state flags a total that changed after approval', () => {
 import { createShopifyClient } from '../src/shopify.js';
 import { makeTokenStore } from '../src/db.js';
 
-// Fake Shopify: orderId -> { name, sourceId }. Records token exchanges.
-function fakeShopify(orders) {
+// Fake Shopify: orderId -> { name, sourceId }. Records refunds it creates.
+function fakeShopify(orders, { failTimes = 0 } = {}) {
+  const created = [];
+  let failures = 0;
   return {
+    created,
     async getOrderNiDetails({ orderId }) {
-      return orders[orderId] ?? null;
+      const o = orders[orderId];
+      return o ? { ...o, refundedInShopify: Boolean(o.refundedInShopify) } : null;
+    },
+    async recordFullRefund(args) {
+      if (failures < failTimes) { failures++; throw new Error('Shopify down'); }
+      created.push(args);
+      orders[args.orderId].refundedInShopify = true;
+      return { refundId: `gid://shopify/Refund/${created.length}`, restocked: args.restock, existing: false };
     },
   };
 }
@@ -207,11 +217,24 @@ async function approvedSale(payments) {
   return s.sourceId;
 }
 
-function setupWithShopify(orders) {
+function setupWithShopify(orders, opts = {}) {
   const repo = makeRepo(openDb());
   const ni = createMockNi({ approveMs: 30 });
-  const shopify = fakeShopify(orders);
-  return { repo, payments: createPayments({ repo, ni, shopify, recoveryAfterMs: 60, log: quietLog }) };
+  const shopify = fakeShopify(orders, opts);
+  const payments = createPayments({
+    repo, ni, shopify, recoveryAfterMs: 60, log: quietLog, restock: opts.restock ?? true,
+  });
+  return { repo, shopify, payments };
+}
+
+async function pollUntilRecorded(payments, sourceId, limitMs = 15000) {
+  const start = Date.now();
+  while (Date.now() - start < limitMs) {
+    const s = await payments.getStatus({ shop: SHOP, sourceId });
+    if (s.shopifyRefund === 'recorded') return s;
+    await wait(50);
+  }
+  throw new Error('Shopify refund never recorded');
 }
 
 test('refund: full refund of an approved NI sale', async () => {
@@ -230,9 +253,68 @@ test('refund: full refund of an approved NI sale', async () => {
   const final = await pollUntilFinal(payments, refund.sourceId);
   assert.equal(final.status, 'approved');
 
+  const recorded = await pollUntilRecorded(payments, refund.sourceId);
+  assert.equal(recorded.restocked, true);
+
   const after = await payments.getOrder({ shop: SHOP, sessionToken: 't', orderId: '1001' });
   assert.equal(after.refundable, false);
   assert.match(after.reason, /already been refunded/);
+});
+
+test('refund: one step records the Shopify refund with the NI gateway and restock', async () => {
+  const orders = {};
+  const { payments, shopify } = setupWithShopify(orders);
+  orders['5'] = { name: '#5', sourceId: await approvedSale(payments) };
+  const r = await payments.startRefund({ shop: SHOP, sessionToken: 't', orderId: '5' });
+  await pollUntilRecorded(payments, r.sourceId);
+  assert.equal(shopify.created.length, 1, 'exactly one Shopify refund');
+  assert.equal(shopify.created[0].orderId, '5');
+  assert.equal(shopify.created[0].gateway, 'Card – Network International');
+  assert.equal(shopify.created[0].restock, true);
+});
+
+test('refund: restock can be switched off', async () => {
+  const orders = {};
+  const { payments, shopify } = setupWithShopify(orders, { restock: false });
+  orders['6'] = { name: '#6', sourceId: await approvedSale(payments) };
+  const r = await payments.startRefund({ shop: SHOP, sessionToken: 't', orderId: '6' });
+  const s = await pollUntilRecorded(payments, r.sourceId);
+  assert.equal(shopify.created[0].restock, false);
+  assert.equal(s.restocked, false);
+});
+
+test('refund: Shopify failure is retried, and never refunds the card twice', async () => {
+  const orders = {};
+  const { payments, shopify } = setupWithShopify(orders, { failTimes: 1 });
+  orders['7'] = { name: '#7', sourceId: await approvedSale(payments) };
+  const r = await payments.startRefund({ shop: SHOP, sessionToken: 't', orderId: '7' });
+  const first = await pollUntilFinal(payments, r.sourceId);
+  assert.equal(first.status, 'approved');
+
+  // Card refunded but Shopify failed: the order offers "record" only.
+  let o;
+  for (let i = 0; i < 100; i++) {
+    o = await payments.getOrder({ shop: SHOP, sessionToken: 't', orderId: '7' });
+    if (o.refund?.shopifyRefund === 'failed' || o.refund?.shopifyRefund === 'recorded') break;
+    await wait(20);
+  }
+  assert.equal(o.refund.shopifyRefund, 'failed');
+  assert.equal(o.action, 'record');
+
+  const fixed = await payments.startRefund({ shop: SHOP, sessionToken: 't', orderId: '7' });
+  assert.equal(fixed.sourceId, r.sourceId, 'same refund, no second card refund');
+  assert.equal(fixed.shopifyRefund, 'recorded');
+  assert.equal(shopify.created.length, 1);
+});
+
+test('refund: order already refunded in Shopify (without terminal) is not refunded again', async () => {
+  const orders = {};
+  const { payments } = setupWithShopify(orders);
+  orders['8'] = { name: '#8', sourceId: await approvedSale(payments), refundedInShopify: true };
+  const o = await payments.getOrder({ shop: SHOP, sessionToken: 't', orderId: '8' });
+  assert.equal(o.refundable, false);
+  assert.match(o.reason, /already refunded in Shopify/);
+  await assert.rejects(payments.startRefund({ shop: SHOP, sessionToken: 't', orderId: '8' }), /already refunded in Shopify/);
 });
 
 test('refund: cannot refund twice, even while the first is in progress', async () => {
@@ -284,7 +366,58 @@ test('shopify client: exchanges the session token once, then reads the order', a
     apiKey: 'k', apiSecret: 's', tokenStore: makeTokenStore(openDb()), fetchImpl,
   });
   assert.deepEqual(await client.getOrderNiDetails({ shop: SHOP, sessionToken: 'session-jwt', orderId: '1001' }),
-    { name: '#1001', sourceId: 'DABC' });
+    { name: '#1001', sourceId: 'DABC', refundedInShopify: false });
   await client.getOrderNiDetails({ shop: SHOP, sessionToken: 'session-jwt', orderId: '1001' });
   assert.equal(calls.filter((u) => u.endsWith('access_token')).length, 1, 'token cached after first exchange');
+});
+
+test('shopify client: full refund uses the NI sale, restocks at the POS location', async () => {
+  const sent = [];
+  const fetchImpl = async (url, opts) => {
+    if (url.endsWith('/admin/oauth/access_token')) {
+      return { ok: true, status: 200, json: async () => ({ access_token: 'shpat_x' }) };
+    }
+    const body = JSON.parse(opts.body);
+    sent.push(body);
+    if (body.query.includes('RefundContext')) {
+      return { ok: true, status: 200, json: async () => ({ data: { order: {
+        id: 'gid://shopify/Order/9', name: '#9', refunds: [],
+        lineItems: { nodes: [{ id: 'gid://shopify/LineItem/1', refundableQuantity: 2 },
+          { id: 'gid://shopify/LineItem/2', refundableQuantity: 0 }] },
+        transactions: [
+          { id: 'gid://shopify/OrderTransaction/50', gateway: 'Card – Network International', kind: 'SALE',
+            status: 'SUCCESS', amountSet: { shopMoney: { amount: '80.0', currencyCode: 'AED' } } },
+        ],
+      } } }) };
+    }
+    if (body.query.includes('OrderLocation')) {
+      return { ok: true, status: 200, json: async () => ({ data: { order: { retailLocation: { id: 'gid://shopify/Location/3' } } } }) };
+    }
+    return { ok: true, status: 200, json: async () => ({ data: { refundCreate: {
+      refund: { id: 'gid://shopify/Refund/77' }, userErrors: [] } } }) };
+  };
+  const client = createShopifyClient({ apiKey: 'k', apiSecret: 's', tokenStore: makeTokenStore(openDb()), fetchImpl });
+  const r = await client.recordFullRefund({
+    shop: SHOP, sessionToken: 'jwt', orderId: '9', gateway: 'Card – Network International', restock: true, note: 'n',
+  });
+  assert.deepEqual(r, { refundId: 'gid://shopify/Refund/77', restocked: true, existing: false });
+  const input = sent.find((b) => b.query.includes('refundCreate')).variables.input;
+  assert.equal(input.orderId, 'gid://shopify/Order/9');
+  assert.deepEqual(input.refundLineItems, [{ lineItemId: 'gid://shopify/LineItem/1', quantity: 2,
+    restockType: 'RETURN', locationId: 'gid://shopify/Location/3' }]);
+  assert.deepEqual(input.transactions, [{ orderId: 'gid://shopify/Order/9', gateway: 'Card – Network International',
+    kind: 'REFUND', amount: '80.00', parentId: 'gid://shopify/OrderTransaction/50' }]);
+  assert.equal(input.notify, false);
+});
+
+test('shopify client: skips if the order already has a refund', async () => {
+  const fetchImpl = async (url) => {
+    if (url.endsWith('access_token')) return { ok: true, status: 200, json: async () => ({ access_token: 'x' }) };
+    return { ok: true, status: 200, json: async () => ({ data: { order: {
+      id: 'o', name: '#1', refunds: [{ id: 'gid://shopify/Refund/1' }], lineItems: { nodes: [] }, transactions: [],
+    } } }) };
+  };
+  const client = createShopifyClient({ apiKey: 'k', apiSecret: 's', tokenStore: makeTokenStore(openDb()), fetchImpl });
+  const r = await client.recordFullRefund({ shop: SHOP, sessionToken: 'jwt', orderId: '1', gateway: 'g' });
+  assert.equal(r.existing, true);
 });

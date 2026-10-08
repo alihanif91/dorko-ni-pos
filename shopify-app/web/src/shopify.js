@@ -11,6 +11,7 @@ export function createShopifyClient({ apiKey, apiSecret, tokenStore, fetchImpl =
   async function offlineToken(shop, sessionToken) {
     const cached = tokenStore.get(shop);
     if (cached) return cached;
+    if (!sessionToken) throw new ShopifyError('No stored Shopify access for this shop yet');
     const body = new URLSearchParams({
       client_id: apiKey,
       client_secret: apiSecret,
@@ -54,16 +55,90 @@ export function createShopifyClient({ apiKey, apiSecret, tokenStore, fetchImpl =
       const data = await graphql(
         shop,
         token,
-        'query NiOrder($id: ID!) { order(id: $id) { name customAttributes { key value } } }',
+        'query NiOrder($id: ID!) { order(id: $id) { name displayFinancialStatus refunds { id } customAttributes { key value } } }',
         { id: `gid://shopify/Order/${orderId}` },
       );
       const order = data?.order;
       if (!order) return null;
       const attr = Object.fromEntries((order.customAttributes || []).map((a) => [a.key, a.value]));
-      if (!attr._ni_source_id) return { name: order.name, sourceId: null };
-      return { name: order.name, sourceId: attr._ni_source_id };
+      return {
+        name: order.name,
+        sourceId: attr._ni_source_id || null,
+        refundedInShopify: (order.refunds || []).length > 0,
+      };
+    },
+
+    // Records a full refund of the NI card payment in Shopify, so Shopify's
+    // books match the terminal. Restocks to the order's POS location when
+    // possible. Never creates a second refund if one already exists.
+    async recordFullRefund({ shop, sessionToken, orderId, gateway, restock = true, note }) {
+      const token = await offlineToken(shop, sessionToken);
+      const gid = `gid://shopify/Order/${orderId}`;
+      const data = await graphql(shop, token, REFUND_CONTEXT, { id: gid });
+      const order = data?.order;
+      if (!order) throw new ShopifyError('Order not found in Shopify');
+      if (order.refunds.length) return { refundId: order.refunds[0].id, restocked: null, existing: true };
+
+      const sales = order.transactions.filter((t) => t.kind === 'SALE' && t.status === 'SUCCESS');
+      const niSales = sales.filter((t) => t.gateway === gateway);
+      const paid = niSales.length ? niSales : sales.length === 1 ? sales : [];
+      if (!paid.length) throw new ShopifyError(`No "${gateway}" payment on this order`);
+      const amount = paid.reduce((sum, t) => sum + Number(t.amountSet.shopMoney.amount), 0).toFixed(2);
+
+      let locationId = null;
+      if (restock) {
+        try {
+          const loc = await graphql(shop, token, ORDER_LOCATION, { id: gid });
+          locationId = loc?.order?.retailLocation?.id ?? null;
+        } catch {
+          locationId = null; // e.g. read_locations not granted yet: refund without restock
+        }
+      }
+
+      const build = (restockType) => ({
+        orderId: gid,
+        notify: false,
+        note,
+        refundLineItems: order.lineItems.nodes
+          .filter((li) => li.refundableQuantity > 0)
+          .map((li) => ({
+            lineItemId: li.id,
+            quantity: li.refundableQuantity,
+            restockType,
+            ...(restockType === 'RETURN' ? { locationId } : {}),
+          })),
+        transactions: [{
+          orderId: gid, gateway: paid[0].gateway, kind: 'REFUND', amount, parentId: paid[0].id,
+        }],
+      });
+
+      const attempt = async (restockType) => {
+        const res = await graphql(shop, token, REFUND_CREATE, { input: build(restockType) });
+        return res.refundCreate;
+      };
+
+      let restocked = Boolean(locationId);
+      let result = await attempt(restocked ? 'RETURN' : 'NO_RESTOCK');
+      if (result.userErrors?.length && restocked) {
+        restocked = false; // restocking rejected: still record the money
+        result = await attempt('NO_RESTOCK');
+      }
+      if (result.userErrors?.length) throw new ShopifyError(result.userErrors[0].message);
+      return { refundId: result.refund.id, restocked, existing: false };
     },
   };
 }
+
+const REFUND_CONTEXT = `query RefundContext($id: ID!) { order(id: $id) {
+  id name refunds { id }
+  lineItems(first: 100) { nodes { id refundableQuantity } }
+  transactions { id gateway kind status amountSet { shopMoney { amount currencyCode } } }
+} }`;
+
+const ORDER_LOCATION = 'query OrderLocation($id: ID!) { order(id: $id) { retailLocation { id } } }';
+
+const REFUND_CREATE = `mutation RecordRefund($input: RefundInput!) { refundCreate(input: $input) {
+  refund { id } userErrors { field message }
+} }`;
 
 export class ShopifyError extends Error {}
