@@ -20,4 +20,6 @@ redirect_urls = ["https://dorko-ni-pos.onrender.com/auth/callback"]
 api_version = "2026-07"
 
 [pos]
-embedded = false
+# true: lists the app under POS apps so its tile and actions can be added.
+# With false, the deployed extension didn't show in POS (7-8 Oct testing).
+embedded = true
