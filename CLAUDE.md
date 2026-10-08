@@ -43,6 +43,11 @@ Middle East (client: Ziad Yaghi). Two deliverables:
   `_ni_source_id`, `_ni_amount`, `_ni_approval_code`, `_ni_rrn` confirmed as
   order customAttributes via Admin API. Decline (.13) and recovery (.99)
   tests next; iPad layout check still to do.
+- 8 Oct: full refund built (POS order details → "Refund on NI terminal";
+  server finds the NI sale via Shopify token exchange + read_orders, then
+  refunds on the terminal; staff then record the return in POS). 17 tests
+  pass. Not yet tried on a device. Unverified: whether Shopify's token
+  exchange accepts POS session tokens (docs don't say).
 
 ## Where Shopify commands run
 - Dev store: `dorko-ni-dev.myshopify.com` (Enigma Logics org, Grow plan,
@@ -51,9 +56,16 @@ Middle East (client: Ziad Yaghi). Two deliverables:
   `shopify-app/shopify.app.toml`.
 - The claude.ai cloud workspace cannot reach any Shopify host (network
   allowlist blocks accounts.shopify.com, partners/app.shopify.com,
-  *.myshopify.com). Shopify CLI (`shopify app dev/deploy`, login) must run on
-  Ali's own machine. Cloud sessions write code and push; the local session
-  pulls and runs the CLI.
+  *.myshopify.com). **Ali wants everything run from the cloud session, no
+  local terminal.** So Shopify deploys go through GitHub Actions:
+  `.github/workflows/deploy-shopify.yml` (manual trigger; the cloud session
+  can dispatch it with `gh api -X POST
+  repos/alihanif91/dorko-ni-pos/actions/workflows/deploy-shopify.yml/dispatches
+  -f ref=main` and read step results via the runs/jobs API, but cannot set
+  secrets or read logs). Needs repo secret SHOPIFY_APP_AUTOMATION_TOKEN
+  (Ali adds it in the GitHub UI) and a real test server URL in
+  shopify.app.toml (the workflow refuses to deploy with example.com).
+  Store data (products, orders) goes through the Shopify connector.
 
 ## Before writing code against real NI docs
 Re-read `docs/HANDOVER.md`'s architecture section against whatever NI sends
