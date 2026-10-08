@@ -186,3 +186,105 @@ test('cart state flags a total that changed after approval', () => {
   assert.equal(changed.state, 'stale');
   assert.equal(changed.approvedAmount, 8000);
 });
+
+// --- Refunds ----------------------------------------------------------------
+
+import { createShopifyClient } from '../src/shopify.js';
+import { makeTokenStore } from '../src/db.js';
+
+// Fake Shopify: orderId -> { name, sourceId }. Records token exchanges.
+function fakeShopify(orders) {
+  return {
+    async getOrderNiDetails({ orderId }) {
+      return orders[orderId] ?? null;
+    },
+  };
+}
+
+async function approvedSale(payments) {
+  const s = await payments.startSale({ shop: SHOP, amountMinor: 8000, currency: 'AED' });
+  await pollUntilFinal(payments, s.sourceId);
+  return s.sourceId;
+}
+
+function setupWithShopify(orders) {
+  const repo = makeRepo(openDb());
+  const ni = createMockNi({ approveMs: 30 });
+  const shopify = fakeShopify(orders);
+  return { repo, payments: createPayments({ repo, ni, shopify, recoveryAfterMs: 60, log: quietLog }) };
+}
+
+test('refund: full refund of an approved NI sale', async () => {
+  const orders = {};
+  const { payments } = setupWithShopify(orders);
+  const sourceId = await approvedSale(payments);
+  orders['1001'] = { name: '#1001', sourceId };
+
+  const before = await payments.getOrder({ shop: SHOP, sessionToken: 't', orderId: '1001' });
+  assert.equal(before.refundable, true);
+  assert.equal(before.sale.amount, 8000);
+
+  const refund = await payments.startRefund({ shop: SHOP, sessionToken: 't', orderId: '1001' });
+  assert.equal(refund.type, 'refund');
+  assert.equal(refund.amount, 8000);
+  const final = await pollUntilFinal(payments, refund.sourceId);
+  assert.equal(final.status, 'approved');
+
+  const after = await payments.getOrder({ shop: SHOP, sessionToken: 't', orderId: '1001' });
+  assert.equal(after.refundable, false);
+  assert.match(after.reason, /already been refunded/);
+});
+
+test('refund: cannot refund twice, even while the first is in progress', async () => {
+  const orders = {};
+  const { payments } = setupWithShopify(orders);
+  orders['1'] = { name: '#1', sourceId: await approvedSale(payments) };
+  await payments.startRefund({ shop: SHOP, sessionToken: 't', orderId: '1' });
+  await assert.rejects(payments.startRefund({ shop: SHOP, sessionToken: 't', orderId: '1' }), /in progress/);
+});
+
+test('refund: rejected for non-NI orders, declined sales and other shops', async () => {
+  const orders = { '2': { name: '#2', sourceId: null } };
+  const { payments } = setupWithShopify(orders);
+
+  const cashOrder = await payments.getOrder({ shop: SHOP, sessionToken: 't', orderId: '2' });
+  assert.equal(cashOrder.refundable, false);
+  assert.match(cashOrder.reason, /not paid on the Network International terminal/);
+
+  const declined = await payments.startSale({ shop: SHOP, amountMinor: 1013, currency: 'AED' });
+  await pollUntilFinal(payments, declined.sourceId);
+  orders['3'] = { name: '#3', sourceId: declined.sourceId };
+  await assert.rejects(payments.startRefund({ shop: SHOP, sessionToken: 't', orderId: '3' }), /not approved/);
+
+  orders['4'] = { name: '#4', sourceId: await approvedSale(payments) };
+  const other = await payments.getOrder({ shop: 'other.myshopify.com', sessionToken: 't', orderId: '4' });
+  assert.equal(other.refundable, false);
+
+  await assert.rejects(payments.getOrder({ shop: SHOP, sessionToken: 't', orderId: 'abc' }), NotFoundError);
+  await assert.rejects(payments.getOrder({ shop: SHOP, sessionToken: 't', orderId: '999' }), NotFoundError);
+});
+
+test('shopify client: exchanges the session token once, then reads the order', async () => {
+  const calls = [];
+  const fetchImpl = async (url, opts) => {
+    calls.push(url);
+    if (url.endsWith('/admin/oauth/access_token')) {
+      const body = new URLSearchParams(opts.body);
+      assert.equal(body.get('grant_type'), 'urn:ietf:params:oauth:grant-type:token-exchange');
+      assert.equal(body.get('subject_token'), 'session-jwt');
+      assert.equal(body.get('requested_token_type'), 'urn:shopify:params:oauth:token-type:offline-access-token');
+      return { ok: true, status: 200, json: async () => ({ access_token: 'shpat_x' }) };
+    }
+    assert.equal(opts.headers['X-Shopify-Access-Token'], 'shpat_x');
+    assert.equal(JSON.parse(opts.body).variables.id, 'gid://shopify/Order/1001');
+    return { ok: true, status: 200, json: async () => ({ data: { order: { name: '#1001',
+      customAttributes: [{ key: '_ni_source_id', value: 'DABC' }, { key: '_ni_rrn', value: 'R' }] } } }) };
+  };
+  const client = createShopifyClient({
+    apiKey: 'k', apiSecret: 's', tokenStore: makeTokenStore(openDb()), fetchImpl,
+  });
+  assert.deepEqual(await client.getOrderNiDetails({ shop: SHOP, sessionToken: 'session-jwt', orderId: '1001' }),
+    { name: '#1001', sourceId: 'DABC' });
+  await client.getOrderNiDetails({ shop: SHOP, sessionToken: 'session-jwt', orderId: '1001' });
+  assert.equal(calls.filter((u) => u.endsWith('access_token')).length, 1, 'token cached after first exchange');
+});

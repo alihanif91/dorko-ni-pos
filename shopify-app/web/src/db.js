@@ -21,6 +21,13 @@ export function openDb(path = ':memory:') {
       updated_at     INTEGER NOT NULL,
       last_recovery_at INTEGER
     );
+    CREATE INDEX IF NOT EXISTS idx_parent ON transactions(parent_id);
+    -- Offline Admin API tokens from token exchange, one per shop.
+    CREATE TABLE IF NOT EXISTS shop_tokens (
+      shop       TEXT PRIMARY KEY,
+      token      TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
   `);
   return db;
 }
@@ -39,7 +46,14 @@ export function makeRepo(db) {
     'UPDATE transactions SET last_recovery_at = ? WHERE source_id = ?',
   );
 
+  const refundsOf = db.prepare(
+    "SELECT * FROM transactions WHERE parent_id = ? AND type = 'refund' ORDER BY created_at DESC",
+  );
+
   return {
+    refundsOf(parentId) {
+      return refundsOf.all(parentId);
+    },
     create({ sourceId, shop, type = 'sale', parentId = null, amountMinor, currency, staffId }) {
       const now = Date.now();
       insert.run(sourceId, shop, type, parentId, amountMinor, currency, staffId ?? null, now, now);
@@ -55,5 +69,19 @@ export function makeRepo(db) {
     markRecovery(sourceId) {
       markRecovery.run(Date.now(), sourceId);
     },
+  };
+}
+
+export function makeTokenStore(db) {
+  const get = db.prepare('SELECT token FROM shop_tokens WHERE shop = ?');
+  const set = db.prepare(
+    'INSERT INTO shop_tokens (shop, token, created_at) VALUES (?, ?, ?) '
+    + 'ON CONFLICT(shop) DO UPDATE SET token = excluded.token, created_at = excluded.created_at',
+  );
+  const del = db.prepare('DELETE FROM shop_tokens WHERE shop = ?');
+  return {
+    get: (shop) => get.get(shop)?.token ?? null,
+    set: (shop, token) => { set.run(shop, token, Date.now()); },
+    delete: (shop) => { del.run(shop); },
   };
 }

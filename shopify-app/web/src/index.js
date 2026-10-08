@@ -1,4 +1,5 @@
-import { openDb, makeRepo } from './db.js';
+import { openDb, makeRepo, makeTokenStore } from './db.js';
+import { createShopifyClient } from './shopify.js';
 import { createNiClient } from './ni/index.js';
 import { createPayments } from './payments.js';
 import { createServer } from './server.js';
@@ -9,11 +10,18 @@ if (env.NODE_ENV === 'production' && !env.SHOPIFY_API_SECRET) {
   throw new Error('SHOPIFY_API_SECRET is required in production');
 }
 
-const repo = makeRepo(openDb(env.DB_PATH || './data.sqlite'));
+const db = openDb(env.DB_PATH || './data.sqlite');
+const repo = makeRepo(db);
+const shopify = createShopifyClient({
+  apiKey: env.SHOPIFY_API_KEY,
+  apiSecret: env.SHOPIFY_API_SECRET,
+  tokenStore: makeTokenStore(db),
+});
 const ni = createNiClient(env);
 const payments = createPayments({
   repo,
   ni,
+  shopify,
   recoveryAfterMs: Number(env.RECOVERY_AFTER_MS || 20000),
 });
 

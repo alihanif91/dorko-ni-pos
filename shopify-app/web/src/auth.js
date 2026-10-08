@@ -50,6 +50,7 @@ export function requireSession(env = process.env) {
     }
     try {
       const token = (req.get('authorization') || '').replace(/^Bearer\s+/i, '');
+      req.sessionToken = token; // kept for Shopify token exchange (refunds)
       req.session = verifySessionToken(token, {
         apiKey: env.SHOPIFY_API_KEY,
         apiSecret: env.SHOPIFY_API_SECRET,

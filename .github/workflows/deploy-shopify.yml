@@ -1,0 +1,33 @@
+# Deploys the Shopify app (config + POS extension) as a new app version.
+# Manual trigger only: Actions tab -> "Deploy Shopify app" -> Run workflow.
+# Needs repo secret SHOPIFY_APP_AUTOMATION_TOKEN (Dev Dashboard -> app ->
+# App settings -> App Automation Token).
+# Don't run until application_url in shopify.app.toml points at the real
+# test server: the POS extension calls the server through that URL.
+name: Deploy Shopify app
+on:
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: shopify-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: shopify-app/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - name: Refuse to deploy with a placeholder app URL
+        run: |
+          if grep -q 'example.com' shopify.app.toml; then
+            echo "application_url is still a placeholder; set the test server URL first." >&2
+            exit 1
+          fi
+      - run: npx shopify app deploy --allow-updates
+        env:
+          SHOPIFY_APP_AUTOMATION_TOKEN: ${{ secrets.SHOPIFY_APP_AUTOMATION_TOKEN }}

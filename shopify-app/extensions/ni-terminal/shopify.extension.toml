@@ -15,5 +15,13 @@ target = "pos.home.tile.render"
 module = "./src/Modal.jsx"
 target = "pos.home.modal.render"
 
+[[extensions.targeting]]
+module = "./src/RefundMenuItem.jsx"
+target = "pos.order-details.action.menu-item.render"
+
+[[extensions.targeting]]
+module = "./src/RefundModal.jsx"
+target = "pos.order-details.action.render"
+
 [extensions.capabilities]
 network_access = true

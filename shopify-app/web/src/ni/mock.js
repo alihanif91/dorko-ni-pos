@@ -55,7 +55,10 @@ export function createMockNi({ approveMs = 4000 } = {}) {
     },
 
     async refund({ sourceId }) {
-      return { status: 'approved', approvalCode: '999999', rrn: `MOCKR${sourceId.slice(-8)}` };
+      const result = { status: 'approved', approvalCode: '999999', rrn: `MOCKR${sourceId.slice(-8)}` };
+      outcomes.set(sourceId, { result, readyAt: Date.now() + approveMs });
+      await wait(approveMs);
+      return result;
     },
   };
 }

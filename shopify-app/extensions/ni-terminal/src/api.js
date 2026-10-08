@@ -45,3 +45,25 @@ export function getStatus(sourceId) {
 export function cancelSale(sourceId) {
   return call(`/api/payments/${encodeURIComponent(sourceId)}/cancel`, { method: 'POST' });
 }
+
+// Refunds. The POS order screen only knows the Shopify order ID; the server
+// looks up the NI payment saved on that order.
+export function getOrderPayment(orderId) {
+  return call(`/api/orders/${encodeURIComponent(orderId)}`);
+}
+
+export function startRefund(orderId) {
+  return call(`/api/orders/${encodeURIComponent(orderId)}/refund`, { method: 'POST' });
+}
+
+// Polls a sale or refund until it settles or we give up waiting on our side.
+// The server keeps recovering it through NI's Get Result either way.
+export async function waitForFinal(sourceId, { intervalMs = 1500, giveUpMs = 120000, isStopped = () => false } = {}) {
+  const started = Date.now();
+  while (!isStopped() && Date.now() - started < giveUpMs) {
+    await new Promise((r) => setTimeout(r, intervalMs));
+    const result = await getStatus(sourceId);
+    if (result.status !== 'pending') return result;
+  }
+  return { status: 'pending' };
+}

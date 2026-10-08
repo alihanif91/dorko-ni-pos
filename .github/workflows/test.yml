@@ -1,0 +1,20 @@
+# Runs all tests on every push, so a broken change shows up in GitHub.
+name: Tests
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: shopify-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: shopify-app/package-lock.json
+      - run: npm ci
+      - run: npm test
