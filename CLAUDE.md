@@ -64,6 +64,21 @@ Middle East (client: Ziad Yaghi). Two deliverables:
   retried on poll if Shopify fails; never refunds the card twice; an order
   refunded on the terminal but not in Shopify offers "Record refund in
   Shopify". Needs scope read_locations (added 8 Oct). 23 tests pass.
+- 8 Oct: refundCreate failed on device ("card refunded, Shopify not updated"):
+  since Admin API 2026-04 it requires `@idempotent(key:)`. Fixed (7ef1604).
+  read_locations still not granted on dorko-ni-dev (non-embedded app shows
+  no update prompt; reinstall via the custom distribution link grants it).
+- 12 Oct NI answers (Shahrukh): print-on-demand is NI backend config; each
+  request carries MID + TID in the API URL; Alipay/WeChat use the same flow
+  with different request parameters; no IP whitelist or callback URL needed
+  (fits our polling/Get Result design); test terminal delivered in UAE
+  after the DOU. Certification test cases come with the docs.
+- 15 Oct: DOU still unsigned; no NI docs or test terminal yet.
+- 15 Oct: auto-close after approval fixed (2026-07 uses `window.close()`;
+  `shopify.navigation` doesn't exist). Main/backup terminal switch built:
+  NI_MID + NI_TERMINALS=Main:TID,Backup:TID, per-shop active terminal,
+  each transaction keeps its TID so Get Result/void go to the same
+  terminal; switch shown on the charge and refund screens. 26 tests pass.
 
 ## Where Shopify commands run
 - Dev store: `dorko-ni-dev.myshopify.com` (Enigma Logics org, Grow plan,
