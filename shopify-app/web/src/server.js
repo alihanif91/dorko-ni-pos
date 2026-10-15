@@ -47,6 +47,15 @@ export function createServer({ payments, env = process.env }) {
     res.json(await payments.cancel({ shop: req.session.shop, sourceId: req.params.id }));
   });
 
+  // Main/backup terminal switch (failover). Applies to new sales and refunds.
+  api.get('/terminals', (req, res) => {
+    res.json(payments.listTerminals({ shop: req.session.shop }));
+  });
+
+  api.post('/terminals/active', (req, res) => {
+    res.json(payments.setTerminal({ shop: req.session.shop, tid: req.body?.tid }));
+  });
+
   // Refunds: look up the NI payment behind a Shopify order, then refund it
   // in full on the terminal. Progress is polled via GET /payments/:id.
   api.get('/orders/:orderId', async (req, res) => {

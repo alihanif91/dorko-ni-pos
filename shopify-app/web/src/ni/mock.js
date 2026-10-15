@@ -7,11 +7,15 @@
 //                            (exercises timeout recovery)
 //   anything else         -> approved after MOCK_APPROVE_MS
 //
+// Each request names a terminal ({ mid, tid }). Like the real NI routing,
+// Get Result and void only find a transaction on the terminal it ran on.
+//
 // Every result has the same normalised shape:
 //   { status: 'pending'|'approved'|'declined'|'cancelled', approvalCode, rrn, message }
 
 export function createMockNi({ approveMs = 4000 } = {}) {
-  const outcomes = new Map(); // sourceId -> final result
+  const outcomes = new Map(); // sourceId -> { result, readyAt, tid }
+  const calls = []; // { op, sourceId, tid }: lets tests see where requests went
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
   function decide(sourceId, amountMinor) {
@@ -29,9 +33,12 @@ export function createMockNi({ approveMs = 4000 } = {}) {
   return {
     mode: 'mock',
 
-    async sale({ sourceId, amountMinor }) {
+    calls,
+
+    async sale({ terminal, sourceId, amountMinor }) {
+      calls.push({ op: 'sale', sourceId, tid: terminal?.tid });
       const result = decide(sourceId, amountMinor);
-      outcomes.set(sourceId, { result, readyAt: Date.now() + approveMs });
+      outcomes.set(sourceId, { result, readyAt: Date.now() + approveMs, tid: terminal?.tid });
       if (amountMinor % 100 === 99) {
         // Simulate a dropped connection: the request hangs, then errors.
         await wait(approveMs * 3);
@@ -41,22 +48,26 @@ export function createMockNi({ approveMs = 4000 } = {}) {
       return result;
     },
 
-    async getResult(sourceId) {
+    async getResult(sourceId, terminal) {
+      calls.push({ op: 'getResult', sourceId, tid: terminal?.tid });
       const entry = outcomes.get(sourceId);
-      if (!entry) return { status: 'error', message: 'Mock: unknown SourceID' };
+      if (!entry || entry.tid !== terminal?.tid) return { status: 'error', message: 'Mock: unknown SourceID' };
       if (Date.now() < entry.readyAt) return { status: 'pending' };
       return entry.result;
     },
 
-    async void(sourceId) {
+    async void(sourceId, terminal) {
+      calls.push({ op: 'void', sourceId, tid: terminal?.tid });
       const entry = outcomes.get(sourceId);
+      if (entry && entry.tid !== terminal?.tid) return { status: 'error', message: 'Mock: unknown SourceID' };
       if (entry) entry.result = { status: 'cancelled', message: 'Mock: voided' };
       return { status: 'cancelled', message: 'Voided' };
     },
 
-    async refund({ sourceId }) {
+    async refund({ terminal, sourceId }) {
+      calls.push({ op: 'refund', sourceId, tid: terminal?.tid });
       const result = { status: 'approved', approvalCode: '999999', rrn: `MOCKR${sourceId.slice(-8)}` };
-      outcomes.set(sourceId, { result, readyAt: Date.now() + approveMs });
+      outcomes.set(sourceId, { result, readyAt: Date.now() + approveMs, tid: terminal?.tid });
       await wait(approveMs);
       return result;
     },

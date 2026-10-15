@@ -13,7 +13,7 @@ const SHOPIFY_RETRY_MS = 10000;
 
 export function createPayments({
   repo, ni, shopify = null, recoveryAfterMs = 20000, log = console,
-  gateway = DEFAULT_GATEWAY, restock = true,
+  gateway = DEFAULT_GATEWAY, restock = true, terminals = singleTerminal(),
 }) {
   const settling = new Set();
   const lastShopifyAttempt = new Map();
@@ -51,6 +51,7 @@ export function createPayments({
   // Runs a sale or refund against NI in the background.
   function runTxn(row) {
     const args = {
+      terminal: terminalOf(row),
       sourceId: row.source_id,
       parentId: row.parent_id,
       amountMinor: row.amount_minor,
@@ -80,7 +81,7 @@ export function createPayments({
   function allocate(fields) {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        return repo.create({ ...fields, sourceId: newSourceId() });
+        return repo.create({ ...fields, tid: terminals.active(fields.shop).tid, sourceId: newSourceId() });
       } catch (err) {
         if (!String(err.message).includes('UNIQUE')) throw err; // retry only on ID clash
       }
@@ -123,7 +124,23 @@ export function createPayments({
     };
   }
 
+  // NI addresses a terminal by MID + TID; a transaction always goes back to
+  // the terminal it started on, whichever terminal is active now.
+  function terminalOf(row) {
+    return { mid: terminals.mid, tid: terminals.forRow(row).tid };
+  }
+
   return {
+    // Main/backup terminal switch. New sales and refunds go to the active one.
+    listTerminals({ shop }) {
+      return { terminals: terminals.list(shop) };
+    },
+
+    setTerminal({ shop, tid }) {
+      if (!terminals.setActive(shop, tid)) throw new ValidationError('Unknown terminal');
+      return { terminals: terminals.list(shop) };
+    },
+
     async getOrder(args) {
       const p = await orderPayment(args);
       return {
@@ -178,7 +195,7 @@ export function createPayments({
         const since = Date.now() - (row.last_recovery_at ?? row.created_at);
         if (since >= recoveryAfterMs) {
           repo.markRecovery(sourceId);
-          const result = await ni.getResult(sourceId);
+          const result = await ni.getResult(sourceId, terminalOf(row));
           if (result?.status && result.status !== 'pending' && result.status !== 'error') {
             row = applyResult(sourceId, result);
           }
@@ -191,7 +208,7 @@ export function createPayments({
     async cancel({ shop, sourceId }) {
       const row = ownedRow(shop, sourceId);
       if (row.status === 'declined' || row.status === 'cancelled') return publicView(row);
-      const result = await ni.void(sourceId);
+      const result = await ni.void(sourceId, terminalOf(row));
       if (result?.status !== 'cancelled') {
         throw new Error(result?.message || 'Terminal did not confirm the void');
       }
@@ -214,6 +231,7 @@ function publicView(row) {
     status: row.status,
     amount: row.amount_minor,
     currency: row.currency,
+    tid: row.tid ?? undefined,
     approvalCode: row.approval_code ?? undefined,
     rrn: row.rrn ?? undefined,
     message: row.message ?? undefined,
@@ -223,6 +241,18 @@ function publicView(row) {
         : row.shopify_error ? 'failed' : 'pending',
     shopifyError: row.type === 'refund' ? (row.shopify_error ?? undefined) : undefined,
     restocked: row.type === 'refund' && row.restocked != null ? Boolean(row.restocked) : undefined,
+  };
+}
+
+// Fallback when no terminal config is passed (tests, older callers).
+function singleTerminal() {
+  const t = { name: 'Main', tid: 'MOCKT1' };
+  return {
+    mid: 'MOCKMID',
+    active: () => t,
+    setActive: (shop, tid) => (tid === t.tid ? t : null),
+    forRow: () => t,
+    list: () => [{ ...t, active: true }],
   };
 }
 

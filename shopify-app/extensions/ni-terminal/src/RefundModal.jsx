@@ -3,6 +3,7 @@ import { render } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { getOrderPayment, getStatus, startRefund, waitForFinal } from './api.js';
 import { formatMinor } from './cart.js';
+import { TerminalSwitch } from './TerminalSwitch.jsx';
 
 export default async () => {
   render(<RefundModal />, document.body);
@@ -113,6 +114,7 @@ function RefundModal() {
                 Shopify. Ask the customer to have the card ready.
               </s-text>
               <s-button variant="primary" tone="critical" onClick={refund}>Refund {amount}</s-button>
+              <TerminalSwitch />
             </>
           )}
 

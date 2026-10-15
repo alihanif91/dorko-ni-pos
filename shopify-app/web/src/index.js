@@ -3,6 +3,7 @@ import { createShopifyClient } from './shopify.js';
 import { createNiClient } from './ni/index.js';
 import { createPayments } from './payments.js';
 import { createServer } from './server.js';
+import { parseTerminals, createTerminals } from './terminals.js';
 
 const env = process.env;
 
@@ -18,12 +19,14 @@ const shopify = createShopifyClient({
   tokenStore: makeTokenStore(db),
 });
 const ni = createNiClient(env);
+const terminals = createTerminals(db, parseTerminals(env));
 const payments = createPayments({
   repo,
   ni,
   shopify,
   gateway: env.PAYMENT_GATEWAY_NAME || undefined,
   restock: env.REFUND_RESTOCK !== 'false',
+  terminals,
   recoveryAfterMs: Number(env.RECOVERY_AFTER_MS || 20000),
 });
 

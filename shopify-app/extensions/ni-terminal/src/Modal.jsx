@@ -3,6 +3,7 @@ import { render } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { startSale, getStatus, cancelSale } from './api.js';
 import { cartPaymentState, formatMinor, PROP } from './cart.js';
+import { TerminalSwitch } from './TerminalSwitch.jsx';
 
 export default async () => {
   render(<PaymentModal />, document.body);
@@ -56,7 +57,8 @@ function PaymentModal() {
         });
         setPhase('approved');
         // Back to the home screen so the cashier can go straight to Checkout.
-        setTimeout(() => { if (!stopped.current) shopify.navigation.close(); }, 1500);
+        // In POS UI extensions 2026-07, window.close() dismisses the modal.
+        setTimeout(() => { if (!stopped.current) window.close(); }, 1500);
         return;
       }
       if (result.status === 'declined' || result.status === 'cancelled') {
@@ -120,6 +122,7 @@ function PaymentModal() {
               <s-button variant="primary" onClick={charge}>
                 Send {amountText} to terminal
               </s-button>
+              <TerminalSwitch />
             </>
           )}
 

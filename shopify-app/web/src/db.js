@@ -28,12 +28,20 @@ export function openDb(path = ':memory:') {
       token      TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );
+    -- Which NI terminal (TID) new sales go to, per shop: main or backup.
+    CREATE TABLE IF NOT EXISTS shop_terminal (
+      shop       TEXT PRIMARY KEY,
+      tid        TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
   `);
-  // Columns added after the first release (8 Oct): link refunds to the
-  // Shopify order and record whether Shopify's refund was created.
+  // Columns added after the first release: link refunds to the Shopify order
+  // and record whether Shopify's refund was created (8 Oct); the terminal
+  // (TID) each transaction was sent to (15 Oct).
   const cols = db.prepare('PRAGMA table_info(transactions)').all().map((c) => c.name);
   for (const [name, type] of [
     ['order_id', 'TEXT'], ['shopify_refund_id', 'TEXT'], ['shopify_error', 'TEXT'], ['restocked', 'INTEGER'],
+    ['tid', 'TEXT'],
   ]) {
     if (!cols.includes(name)) db.exec(`ALTER TABLE transactions ADD COLUMN ${name} ${type}`);
   }
@@ -43,8 +51,8 @@ export function openDb(path = ':memory:') {
 export function makeRepo(db) {
   const insert = db.prepare(`
     INSERT INTO transactions (source_id, shop, type, parent_id, amount_minor, currency,
-      status, staff_id, order_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`);
+      status, staff_id, order_id, tid, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`);
   const setOrder = db.prepare('UPDATE transactions SET order_id = ? WHERE source_id = ?');
   const setShopify = db.prepare(`
     UPDATE transactions SET shopify_refund_id = ?, shopify_error = ?, restocked = ?, updated_at = ?
@@ -66,10 +74,10 @@ export function makeRepo(db) {
     refundsOf(parentId) {
       return refundsOf.all(parentId);
     },
-    create({ sourceId, shop, type = 'sale', parentId = null, amountMinor, currency, staffId, orderId = null }) {
+    create({ sourceId, shop, type = 'sale', parentId = null, amountMinor, currency, staffId, orderId = null, tid = null }) {
       const now = Date.now();
       insert.run(sourceId, shop, type, parentId, amountMinor, currency, staffId ?? null,
-        orderId == null ? null : String(orderId), now, now);
+        orderId == null ? null : String(orderId), tid, now, now);
       return get.get(sourceId);
     },
     get(sourceId) {

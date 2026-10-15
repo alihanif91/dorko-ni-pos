@@ -7,6 +7,7 @@ import { createPayments, NotFoundError } from '../src/payments.js';
 import { createServer } from '../src/server.js';
 import { newSourceId, isValidSourceId } from '../src/sourceId.js';
 import { verifySessionToken } from '../src/auth.js';
+import { parseTerminals, createTerminals } from '../src/terminals.js';
 import { toMinorUnits, cartPaymentState, PROP } from '../../extensions/ni-terminal/src/cart.js';
 
 const SHOP = 'dorko-dev.myshopify.com';
@@ -424,4 +425,53 @@ test('shopify client: skips if the order already has a refund', async () => {
   const client = createShopifyClient({ apiKey: 'k', apiSecret: 's', tokenStore: makeTokenStore(openDb()), fetchImpl });
   const r = await client.recordFullRefund({ shop: SHOP, sessionToken: 'jwt', orderId: '1', gateway: 'g' });
   assert.equal(r.existing, true);
+});
+
+// --- Main / backup terminal ----------------------------------------------------
+
+function setupTerminals() {
+  const db = openDb();
+  const repo = makeRepo(db);
+  const ni = createMockNi({ approveMs: 30 });
+  const terminals = createTerminals(db, parseTerminals({ NI_MID: 'M1', NI_TERMINALS: 'Main:T1,Backup:T2' }));
+  const payments = createPayments({ repo, ni, terminals, recoveryAfterMs: 60, log: quietLog });
+  return { ni, payments };
+}
+
+test('terminals: sales go to the main terminal until staff switch to backup', async () => {
+  const { ni, payments } = setupTerminals();
+  assert.deepEqual(payments.listTerminals({ shop: SHOP }).terminals.map((t) => [t.name, t.active]),
+    [['Main', true], ['Backup', false]]);
+
+  const a = await payments.startSale({ shop: SHOP, amountMinor: 8000, currency: 'AED' });
+  assert.equal(a.tid, 'T1');
+  payments.setTerminal({ shop: SHOP, tid: 'T2' });
+  const b = await payments.startSale({ shop: SHOP, amountMinor: 8000, currency: 'AED' });
+  assert.equal(b.tid, 'T2');
+  assert.equal((await pollUntilFinal(payments, b.sourceId)).status, 'approved');
+  assert.deepEqual(ni.calls.filter((c) => c.op === 'sale').map((c) => c.tid), ['T1', 'T2']);
+
+  // The switch is per shop.
+  assert.equal(payments.listTerminals({ shop: 'other.myshopify.com' }).terminals[0].active, true);
+  assert.throws(() => payments.setTerminal({ shop: SHOP, tid: 'NOPE' }), /Unknown terminal/);
+});
+
+test('terminals: recovery and void go back to the terminal the sale ran on', async () => {
+  const { ni, payments } = setupTerminals();
+  const sale = await payments.startSale({ shop: SHOP, amountMinor: 1099, currency: 'AED' }); // dropped
+  payments.setTerminal({ shop: SHOP, tid: 'T2' }); // staff switch while it is pending
+  const final = await pollUntilFinal(payments, sale.sourceId);
+  assert.equal(final.status, 'approved');
+  assert.ok(ni.calls.filter((c) => c.op === 'getResult').every((c) => c.tid === 'T1'));
+
+  const voided = await payments.cancel({ shop: SHOP, sourceId: sale.sourceId });
+  assert.equal(voided.status, 'cancelled');
+  assert.equal(ni.calls.find((c) => c.op === 'void').tid, 'T1');
+});
+
+test('terminals: config is required in live mode and validated', () => {
+  assert.throws(() => parseTerminals({ NI_MODE: 'live' }), /required in live mode/);
+  assert.throws(() => parseTerminals({ NI_MID: 'M', NI_TERMINALS: 'Main' }), /Bad NI_TERMINALS/);
+  assert.throws(() => parseTerminals({ NI_MID: 'M', NI_TERMINALS: 'A:T1,B:T1' }), /duplicate/);
+  assert.equal(parseTerminals({}).terminals.length, 2); // mock defaults
 });

@@ -67,3 +67,12 @@ export async function waitForFinal(sourceId, { intervalMs = 1500, giveUpMs = 120
   }
   return { status: 'pending' };
 }
+
+// Main/backup terminal. Returns { terminals: [{ name, tid, active }] }.
+export function getTerminals() {
+  return call('/api/terminals');
+}
+
+export function setActiveTerminal(tid) {
+  return call('/api/terminals/active', { method: 'POST', body: JSON.stringify({ tid }) });
+}
