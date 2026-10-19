@@ -1,0 +1,4 @@
+runner IP: 57.151.137.37
+GET https://vemcount.app/ -> HTTP 302 in 18.063503s
+POST /oauth/token (fake credentials) -> HTTP 401 in 0.461905s
+fake-token body: {"error":"invalid_client","error_description":"Client authentication failed"}
