@@ -4,7 +4,7 @@
 // One credential = one location (Dorko Reem Mall). 60 requests/minute.
 // The secret is only ever sent to the token endpoint, never logged.
 
-export function createVemcount({ baseUrl = 'https://vemcount.app', clientId, clientSecret, fetchImpl = fetch }) {
+export function createVemcount({ baseUrl = 'https://vemcount.app', clientId, clientSecret, fetchImpl = fetch, timeoutMs = 30000 }) {
   if (!clientId || !clientSecret) throw new Error('Vemcount client_id and client_secret are required');
   const root = baseUrl.replace(/\/+$/, '');
   let token = null;
@@ -14,6 +14,7 @@ export function createVemcount({ baseUrl = 'https://vemcount.app', clientId, cli
     if (token && Date.now() < expiresAt) return token;
     const res = await fetchImpl(`${root}/oauth/token`, {
       method: 'POST',
+      signal: AbortSignal.timeout(timeoutMs),
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({
         grant_type: 'client_credentials',
@@ -38,6 +39,7 @@ export function createVemcount({ baseUrl = 'https://vemcount.app', clientId, cli
     async pushSales(rows) {
       const send = async () => fetchImpl(`${root}/api/v4/integrations/sales-data`, {
         method: 'POST',
+        signal: AbortSignal.timeout(timeoutMs),
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',

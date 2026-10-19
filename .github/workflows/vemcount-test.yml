@@ -36,6 +36,12 @@ jobs:
         working-directory: reem-mall
         run: npm test
 
+      - name: Check Vemcount is reachable
+        run: |
+          base="${{ vars.VEMCOUNT_BASE_URL || 'https://vemcount.app' }}"
+          curl -sS -o /dev/null -m 20 -w "GET $base -> HTTP %{http_code} in %{time_total}s\n" "$base/" || echo "GET $base failed"
+          curl -sS -o /dev/null -m 20 -X POST -H 'Content-Type: application/json' -d '{}' -w "POST /oauth/token (no credentials) -> HTTP %{http_code} in %{time_total}s\n" "$base/oauth/token" || echo "POST /oauth/token failed"
+
       - name: Run scenarios
         working-directory: reem-mall
         env:

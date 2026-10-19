@@ -22,7 +22,7 @@ if (mode === 'send') {
     await client.getToken();
     report.token = 'ok';
   } catch (err) {
-    report.token = { error: err.message, status: err.status, body: err.body };
+    report.token = { error: err.message, cause: String(err.cause?.code || err.cause?.message || err.name || ''), status: err.status, body: err.body };
     failed = true;
   }
 }
@@ -33,7 +33,7 @@ for (const s of scenarios) {
     try {
       entry.response = await client.pushSales(s.rows);
     } catch (err) {
-      entry.response = { error: err.message, status: err.status, body: err.body };
+      entry.response = { error: err.message, cause: String(err.cause?.code || err.cause?.message || err.name || ''), status: err.status, body: err.body };
       failed = true;
     }
   }
