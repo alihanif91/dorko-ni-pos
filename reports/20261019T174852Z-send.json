@@ -1,0 +1,107 @@
+{
+  "mode": "send",
+  "ranAt": "2026-10-19T17:48:22.288Z",
+  "baseUrl": "https://vemcount.app",
+  "scenarios": [
+    {
+      "name": "1. Normal sale",
+      "note": "T-shirt 210.00 incl. VAT, no discount",
+      "rows": [
+        {
+          "transaction_id": "TEST-1001",
+          "created_at": "2026-10-19T20:58:22+04:00",
+          "turnover": 200,
+          "discount": 0,
+          "vat": 10,
+          "transactions": 1,
+          "items": 1,
+          "currency_code": "AED",
+          "category": ""
+        }
+      ]
+    },
+    {
+      "name": "2. Sale with discount",
+      "note": "T-shirt 210.00 + Cap 105.00, 10% discount (paid 283.50). TEST-1003 is the same sale, used for the partial return",
+      "rows": [
+        {
+          "transaction_id": "TEST-1002",
+          "created_at": "2026-10-19T21:03:22+04:00",
+          "turnover": 300,
+          "discount": -30,
+          "vat": 13.5,
+          "transactions": 1,
+          "items": 2,
+          "currency_code": "AED",
+          "category": ""
+        },
+        {
+          "transaction_id": "TEST-1003",
+          "created_at": "2026-10-19T21:08:22+04:00",
+          "turnover": 300,
+          "discount": -30,
+          "vat": 13.5,
+          "transactions": 1,
+          "items": 2,
+          "currency_code": "AED",
+          "category": ""
+        }
+      ]
+    },
+    {
+      "name": "3. Full return",
+      "note": "Full return of TEST-1001",
+      "rows": [
+        {
+          "transaction_id": "TEST-1001-R1",
+          "created_at": "2026-10-19T21:18:22+04:00",
+          "turnover": -200,
+          "discount": 0,
+          "vat": -10,
+          "transactions": 1,
+          "items": -1,
+          "currency_code": "AED",
+          "category": "refund"
+        }
+      ]
+    },
+    {
+      "name": "4. Partial return",
+      "note": "Cap returned from TEST-1003 (paid 94.50 for it after discount)",
+      "rows": [
+        {
+          "transaction_id": "TEST-1003-R1",
+          "created_at": "2026-10-19T21:28:22+04:00",
+          "turnover": -100,
+          "discount": 10,
+          "vat": -4.5,
+          "transactions": 1,
+          "items": -1,
+          "currency_code": "AED",
+          "category": "partial-refund"
+        }
+      ]
+    },
+    {
+      "name": "5. Full return with discount",
+      "note": "Full return of discounted sale TEST-1002",
+      "rows": [
+        {
+          "transaction_id": "TEST-1002-R1",
+          "created_at": "2026-10-19T21:38:22+04:00",
+          "turnover": -300,
+          "discount": 30,
+          "vat": -13.5,
+          "transactions": 1,
+          "items": -2,
+          "currency_code": "AED",
+          "category": "refund"
+        }
+      ]
+    }
+  ],
+  "token": {
+    "error": "The operation was aborted due to timeout",
+    "cause": "TimeoutError"
+  }
+}
