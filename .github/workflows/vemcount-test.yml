@@ -39,8 +39,12 @@ jobs:
       - name: Check Vemcount is reachable
         run: |
           base="${{ vars.VEMCOUNT_BASE_URL || 'https://vemcount.app' }}"
-          curl -sS -o /dev/null -m 20 -w "GET $base -> HTTP %{http_code} in %{time_total}s\n" "$base/" || echo "GET $base failed"
-          curl -sS -o /dev/null -m 20 -X POST -H 'Content-Type: application/json' -d '{}' -w "POST /oauth/token (no credentials) -> HTTP %{http_code} in %{time_total}s\n" "$base/oauth/token" || echo "POST /oauth/token failed"
+          {
+            echo "runner IP: $(curl -sS -m 10 https://api.ipify.org || echo unknown)"
+            curl -sS -o /tmp/get.txt -m 20 -w "GET $base/ -> HTTP %{http_code} in %{time_total}s\n" "$base/" || echo "GET failed"
+            curl -sS -o /tmp/tok.txt -m 20 -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d '{"grant_type":"client_credentials","client_id":"x","client_secret":"y","scope":"sales-data:write"}' -w "POST /oauth/token (fake credentials) -> HTTP %{http_code} in %{time_total}s\n" "$base/oauth/token" || echo "POST fake token failed"
+            echo "fake-token body: $(head -c 300 /tmp/tok.txt 2>/dev/null)"
+          } | tee "$RUNNER_TEMP/reach.txt"
 
       - name: Run scenarios
         working-directory: reem-mall
@@ -66,6 +70,7 @@ jobs:
           fi
           mkdir -p reports
           cp "$RUNNER_TEMP/report.json" "reports/$name"
+          [ -f "$RUNNER_TEMP/reach.txt" ] && cp "$RUNNER_TEMP/reach.txt" "reports/${name%.json}-reach.txt"
           git add reports
           git commit -q -m "Vemcount test report $name"
           git push -q origin vemcount-results

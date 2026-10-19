@@ -17,7 +17,11 @@ if (mode === 'send') {
     baseUrl: report.baseUrl,
     clientId: process.env.VEMCOUNT_CLIENT_ID,
     clientSecret: process.env.VEMCOUNT_CLIENT_SECRET,
+    timeoutMs: 90000,
   });
+  report.clientIdLength = (process.env.VEMCOUNT_CLIENT_ID || '').trim().length;
+  report.secretLength = (process.env.VEMCOUNT_CLIENT_SECRET || '').trim().length;
+  report.secretHasWhitespace = /\s/.test(process.env.VEMCOUNT_CLIENT_SECRET || '') || /\s/.test(process.env.VEMCOUNT_CLIENT_ID || '');
   try {
     await client.getToken();
     report.token = 'ok';
