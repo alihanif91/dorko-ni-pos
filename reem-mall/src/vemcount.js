@@ -4,7 +4,7 @@
 // One credential = one location (Dorko Reem Mall). 60 requests/minute.
 // The secret is only ever sent to the token endpoint, never logged.
 
-export function createVemcount({ baseUrl = 'https://vemcount.app', clientId, clientSecret, fetchImpl = fetch, timeoutMs = 30000 }) {
+export function createVemcount({ baseUrl = 'https://vemcount.app', clientId, clientSecret, fetchImpl = fetch, timeoutMs = 90000 }) {
   if (!clientId || !clientSecret) throw new Error('Vemcount client_id and client_secret are required');
   const root = baseUrl.replace(/\/+$/, '');
   let token = null;
