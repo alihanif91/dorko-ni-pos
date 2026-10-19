@@ -1,0 +1,65 @@
+# Sends Reem Mall's test scenarios to Vemcount (Reem Mall's sales system).
+# Manual only. Needs repo secrets VEMCOUNT_CLIENT_ID and VEMCOUNT_CLIENT_SECRET
+# (optional variable VEMCOUNT_BASE_URL, default https://vemcount.app).
+# The report (rows sent + Vemcount's responses, never the secret) is
+# committed to the vemcount-results branch so it can be read from anywhere.
+name: Vemcount test (Reem Mall)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run (show rows only) or send (push to Vemcount)"
+        required: true
+        default: dry-run
+        type: choice
+        options: [dry-run, send]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vemcount-test
+  cancel-in-progress: false
+
+jobs:
+  scenarios:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Unit tests
+        working-directory: reem-mall
+        run: npm test
+
+      - name: Run scenarios
+        working-directory: reem-mall
+        env:
+          VEMCOUNT_CLIENT_ID: ${{ secrets.VEMCOUNT_CLIENT_ID }}
+          VEMCOUNT_CLIENT_SECRET: ${{ secrets.VEMCOUNT_CLIENT_SECRET }}
+          VEMCOUNT_BASE_URL: ${{ vars.VEMCOUNT_BASE_URL || 'https://vemcount.app' }}
+        run: node scripts/test-scenarios.js "${{ inputs.mode }}" "$RUNNER_TEMP/report.json"
+
+      - name: Save report to the vemcount-results branch
+        if: always()
+        run: |
+          [ -f "$RUNNER_TEMP/report.json" ] || { echo "No report produced"; exit 0; }
+          name="$(date -u +%Y%m%dT%H%M%SZ)-${{ inputs.mode }}.json"
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git fetch origin vemcount-results || true
+          if git rev-parse --verify -q origin/vemcount-results >/dev/null; then
+            git switch -c vemcount-results origin/vemcount-results
+          else
+            git switch --orphan vemcount-results
+            git rm -rf -q . || true
+          fi
+          mkdir -p reports
+          cp "$RUNNER_TEMP/report.json" "reports/$name"
+          git add reports
+          git commit -q -m "Vemcount test report $name"
+          git push -q origin vemcount-results

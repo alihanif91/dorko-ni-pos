@@ -1,0 +1,11 @@
+{
+  "name": "reem-mall-sales-feed",
+  "private": true,
+  "type": "module",
+  "description": "Sends Dorko's Reem Mall POS sales and refunds to Vemcount (Reem Mall's sales ingestion API).",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test",
+    "scenarios": "node scripts/test-scenarios.js"
+  }
+}
