@@ -1,0 +1,16 @@
+{
+  "mode": "dry-run",
+  "day": "2026-10-19",
+  "ranAt": "2026-10-20T14:29:55.082Z",
+  "location": "Reem Mall Shop",
+  "ordersScanned": 2,
+  "rows": [],
+  "skipped": [],
+  "totals": {
+    "rows": 0,
+    "turnover": 0,
+    "discount": 0,
+    "vat": 0,
+    "items": 0
+  }
+}
