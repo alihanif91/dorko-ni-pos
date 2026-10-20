@@ -1,0 +1,88 @@
+# Nightly Reem Mall sales feed: yesterday's (Dubai) POS sales and refunds at
+# the Reem Mall location -> Vemcount. Reem Mall asked for 03:00-05:00 AM.
+#
+# Schedule runs only when repo variable REEM_FEED_ENABLED is "true" (set it
+# from the day after the shop opens). Manual runs: pick dry-run or send and
+# optionally a date (YYYY-MM-DD) to (re)send one day; re-sending is safe.
+# Secrets: DORKO_SHOPIFY_CLIENT_ID, DORKO_SHOPIFY_CLIENT_SECRET,
+#          VEMCOUNT_CLIENT_ID, VEMCOUNT_CLIENT_SECRET
+# Reports go to the vemcount-results branch (nightly/<date>-<mode>.json).
+# GitHub emails the repo owner when a run fails.
+name: Reem Mall nightly feed
+
+on:
+  schedule:
+    - cron: "15 23 * * *"   # 23:15 UTC = 03:15 Dubai
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run (show only) or send"
+        required: true
+        default: dry-run
+        type: choice
+        options: [dry-run, send]
+      day:
+        description: "Dubai date YYYY-MM-DD (empty = yesterday)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reem-mall-nightly
+  cancel-in-progress: false
+
+jobs:
+  feed:
+    if: github.event_name == 'workflow_dispatch' || vars.REEM_FEED_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Unit tests
+        working-directory: reem-mall
+        run: npm test
+
+      - name: Build and send
+        id: run
+        working-directory: reem-mall
+        env:
+          DORKO_SHOP: 6zhh3e-ne.myshopify.com
+          DORKO_SHOPIFY_CLIENT_ID: ${{ secrets.DORKO_SHOPIFY_CLIENT_ID }}
+          DORKO_SHOPIFY_CLIENT_SECRET: ${{ secrets.DORKO_SHOPIFY_CLIENT_SECRET }}
+          REEM_LOCATION_NAME: ${{ vars.REEM_LOCATION_NAME || 'Reem Mall Shop' }}
+          VEMCOUNT_CLIENT_ID: ${{ secrets.VEMCOUNT_CLIENT_ID }}
+          VEMCOUNT_CLIENT_SECRET: ${{ secrets.VEMCOUNT_CLIENT_SECRET }}
+          VEMCOUNT_BASE_URL: ${{ vars.VEMCOUNT_BASE_URL || 'https://vemcount.app' }}
+          MODE: ${{ github.event_name == 'schedule' && 'send' || inputs.mode }}
+          DAY: ${{ inputs.day }}
+        run: |
+          # One retry after 5 minutes if the first attempt fails (Vemcount
+          # can be slow). Re-sending is safe: same IDs update the same rows.
+          node scripts/nightly.js "$MODE" "$DAY" "$RUNNER_TEMP/report.json" || {
+            code=$?; [ "$code" = 2 ] && exit 2
+            echo "First attempt failed, retrying in 5 minutes"; sleep 300
+            node scripts/nightly.js "$MODE" "$DAY" "$RUNNER_TEMP/report.json"
+          }
+
+      - name: Save report to the vemcount-results branch
+        if: always()
+        run: |
+          [ -f "$RUNNER_TEMP/report.json" ] || { echo "No report produced"; exit 0; }
+          day=$(node -e "console.log(require(process.argv[1]).day)" "$RUNNER_TEMP/report.json")
+          mode=$(node -e "console.log(require(process.argv[1]).mode)" "$RUNNER_TEMP/report.json")
+          name="${day}-${mode}-$(date -u +%H%M%S).json"
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git fetch origin vemcount-results
+          git switch -c vemcount-results origin/vemcount-results
+          mkdir -p nightly
+          cp "$RUNNER_TEMP/report.json" "nightly/$name"
+          git add nightly
+          git commit -q -m "Reem Mall feed report $name"
+          git push -q origin vemcount-results
