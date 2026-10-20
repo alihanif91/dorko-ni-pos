@@ -49,7 +49,7 @@ export function buildRows(orders, locationId, { start, end }) {
   for (const o of orders) {
     if (!isReemMallPos(o, locationId)) continue;
     const order = normaliseOrder(o);
-    if (inWindow(o.processedAt)) rows.push(saleRow(order));
+    if (inWindow(o.processedAt)) rows.push({ ...saleRow(order), _orderId: o.id, _orderName: o.name, _kind: 'sale' });
 
     const refunds = [...o.refunds].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     refunds.forEach((r, i) => {
@@ -61,7 +61,10 @@ export function buildRows(orders, locationId, { start, end }) {
         skipped.push({ order: o.name, refund: r.id, reason: 'refund without returned items' });
         return;
       }
-      rows.push(refundRow(order, { id: r.id, createdAt: dubaiTime(new Date(r.createdAt)), lineItems: lines }, i + 1));
+      rows.push({
+        ...refundRow(order, { id: r.id, createdAt: dubaiTime(new Date(r.createdAt)), lineItems: lines }, i + 1),
+        _orderId: o.id, _orderName: o.name, _kind: 'refund',
+      });
     });
   }
   rows.sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -75,4 +78,24 @@ export function buildRows(orders, locationId, { start, end }) {
 export function searchFor({ start }) {
   const from = new Date(start.getTime() - 3600 * 1000).toISOString();
   return `updated_at:>='${from}'`;
+}
+
+// Strips the internal fields (order link etc.) before sending to Vemcount.
+export function toVemcount(row) {
+  return Object.fromEntries(Object.entries(row).filter(([k]) => !k.startsWith('_')));
+}
+
+// Totals for a set of rows. "net" follows Reem Mall's report:
+// turnover + discount (discount is negative on sales).
+export function totals(rows) {
+  const sum = (k) => Number(rows.reduce((s, r) => s + r[k], 0).toFixed(2));
+  return {
+    invoices: rows.filter((r) => r._kind === 'sale').length,
+    refunds: rows.filter((r) => r._kind === 'refund').length,
+    turnover: sum('turnover'),
+    discount: sum('discount'),
+    net: Number((sum('turnover') + sum('discount')).toFixed(2)),
+    vat: sum('vat'),
+    items: sum('items'),
+  };
 }

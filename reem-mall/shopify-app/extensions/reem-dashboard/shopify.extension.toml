@@ -1,0 +1,11 @@
+api_version = "2026-07"
+
+[[extensions]]
+name = "Reem Mall dashboard"
+handle = "reem-dashboard"
+type = "ui_extension"
+uid = "38c75d9f-92dd-488a-8ccc-c4ecd7a62b4c"
+
+[[extensions.targeting]]
+module = "./src/AppHome.jsx"
+target = "admin.app.home.render"

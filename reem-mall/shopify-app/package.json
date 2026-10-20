@@ -1,0 +1,7 @@
+{
+  "name": "reem-mall-sales-feed-app",
+  "private": true,
+  "workspaces": ["extensions/*"],
+  "scripts": { "deploy": "shopify app deploy" },
+  "devDependencies": { "@shopify/cli": "^4.8.5" }
+}

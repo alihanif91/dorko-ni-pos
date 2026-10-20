@@ -42,6 +42,8 @@ export function createShopify({ shop, clientId, clientSecret, fetchImpl = fetch,
   }
 
   return {
+    graphql,
+
     async findLocation(name) {
       const data = await graphql('query { locations(first: 50) { nodes { id name isActive } } }');
       const loc = data.locations.nodes.find((l) => l.name.trim().toLowerCase() === name.trim().toLowerCase());
@@ -78,6 +80,7 @@ const ORDERS = `query FeedOrders($q: String!, $after: String) {
         taxLines { rate priceSet { shopMoney { amount } } }
       } }
       refunds { id createdAt refundLineItems(first: 100) { nodes { quantity lineItem { id } } } }
+      metafield(namespace: "$app", key: "reem_feed") { value }
     }
   }
 }`;

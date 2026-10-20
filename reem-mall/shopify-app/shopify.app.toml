@@ -1,0 +1,89 @@
+# "Reem Mall Sales Feed" app, in Dorko's own Shopify organization.
+# client_id is filled in at deploy time from the DORKO_SHOPIFY_CLIENT_ID
+# secret (see .github/workflows/deploy-reem-app.yml).
+client_id = "__DORKO_SHOPIFY_CLIENT_ID__"
+name = "Reem Mall Sales Feed"
+# Extension-only app: the dashboard is a Shopify-hosted App Home extension.
+application_url = "https://shopify.dev/apps/default-app-home"
+embedded = true
+
+[build]
+include_config_on_deploy = true
+
+[access_scopes]
+# read_orders/read_locations: build the feed. write_orders: the Reem Mall
+# record + tag on sent orders (never amounts). metaobjects: the daily log.
+scopes = "read_orders,write_orders,read_locations,read_metaobjects,write_metaobjects"
+
+[auth]
+redirect_urls = ["https://shopify.dev/apps/default-app-home/api/auth"]
+
+[webhooks]
+api_version = "2026-07"
+
+# On each order sent to Reem Mall: every row sent for it (sales + refunds).
+[order.metafields.app.reem_feed]
+name = "Reem Mall feed"
+description = "What was sent to Reem Mall (Vemcount) for this order"
+type = "json"
+access.admin = "merchant_read"
+
+# One entry per day, written by the nightly job, read by the dashboard.
+[metaobjects.app.reem_feed_day]
+name = "Reem Mall feed day"
+description = "Nightly Reem Mall sales feed: one entry per day"
+display_name_field = "day"
+access.admin = "merchant_read"
+
+[metaobjects.app.reem_feed_day.fields.day]
+name = "Day"
+type = "date"
+required = true
+
+[metaobjects.app.reem_feed_day.fields.status]
+name = "Status"
+type = "single_line_text_field"
+
+[metaobjects.app.reem_feed_day.fields.invoices]
+name = "Invoices"
+type = "number_integer"
+
+[metaobjects.app.reem_feed_day.fields.refunds]
+name = "Refunds"
+type = "number_integer"
+
+[metaobjects.app.reem_feed_day.fields.turnover]
+name = "Turnover (before VAT and discount)"
+type = "number_decimal"
+
+[metaobjects.app.reem_feed_day.fields.discount]
+name = "Discount"
+type = "number_decimal"
+
+[metaobjects.app.reem_feed_day.fields.net]
+name = "Net sales (before VAT)"
+type = "number_decimal"
+
+[metaobjects.app.reem_feed_day.fields.vat]
+name = "VAT"
+type = "number_decimal"
+
+[metaobjects.app.reem_feed_day.fields.items]
+name = "Items"
+type = "number_integer"
+
+[metaobjects.app.reem_feed_day.fields.accepted]
+name = "Accepted by Reem Mall"
+type = "number_integer"
+
+[metaobjects.app.reem_feed_day.fields.ran_at]
+name = "Ran at"
+type = "date_time"
+
+[metaobjects.app.reem_feed_day.fields.message]
+name = "Message"
+type = "single_line_text_field"
+
+[metaobjects.app.reem_feed_day.fields.rows]
+name = "Rows sent"
+type = "json"

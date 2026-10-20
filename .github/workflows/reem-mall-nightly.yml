@@ -7,6 +7,8 @@
 # Secrets: DORKO_SHOPIFY_CLIENT_ID, DORKO_SHOPIFY_CLIENT_SECRET,
 #          VEMCOUNT_CLIENT_ID, VEMCOUNT_CLIENT_SECRET
 # Reports go to the vemcount-results branch (nightly/<date>-<mode>.json).
+# With repo variable REEM_LOG_ENABLED=true, each sent day is also recorded in
+# Shopify (daily log + order records) for the dashboard in the admin.
 # GitHub emails the repo owner when a run fails.
 name: Reem Mall nightly feed
 
@@ -56,6 +58,7 @@ jobs:
           DORKO_SHOPIFY_CLIENT_ID: ${{ secrets.DORKO_SHOPIFY_CLIENT_ID }}
           DORKO_SHOPIFY_CLIENT_SECRET: ${{ secrets.DORKO_SHOPIFY_CLIENT_SECRET }}
           REEM_LOCATION_NAME: ${{ vars.REEM_LOCATION_NAME || 'Reem Mall Shop' }}
+          REEM_LOG_ENABLED: ${{ vars.REEM_LOG_ENABLED || 'false' }}
           VEMCOUNT_CLIENT_ID: ${{ secrets.VEMCOUNT_CLIENT_ID }}
           VEMCOUNT_CLIENT_SECRET: ${{ secrets.VEMCOUNT_CLIENT_SECRET }}
           VEMCOUNT_BASE_URL: ${{ vars.VEMCOUNT_BASE_URL || 'https://vemcount.app' }}
@@ -65,7 +68,7 @@ jobs:
           # One retry after 5 minutes if the first attempt fails (Vemcount
           # can be slow). Re-sending is safe: same IDs update the same rows.
           node scripts/nightly.js "$MODE" "$DAY" "$RUNNER_TEMP/report.json" || {
-            code=$?; [ "$code" = 2 ] && exit 2
+            code=$?; [ "$code" = 2 ] || [ "$code" = 3 ] && exit $code
             echo "First attempt failed, retrying in 5 minutes"; sleep 300
             node scripts/nightly.js "$MODE" "$DAY" "$RUNNER_TEMP/report.json"
           }

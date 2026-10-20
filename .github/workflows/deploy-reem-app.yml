@@ -1,0 +1,42 @@
+# Deploys the "Reem Mall Sales Feed" app (Dorko's organization): its config
+# (scopes, the daily-log metaobject and order metafield definitions) and the
+# Shopify-hosted dashboard in the admin. Manual trigger only.
+# Secrets: DORKO_SHOPIFY_CLIENT_ID, REEM_APP_AUTOMATION_TOKEN
+#   (Dev Dashboard -> Dorko org -> Reem Mall Sales Feed -> App settings ->
+#    App Automation Token)
+# After a deploy that adds scopes, approve them in Dorko's admin.
+name: Deploy Reem Mall app
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: reem-mall/shopify-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Feed and dashboard tests
+        working-directory: reem-mall
+        run: npm test
+
+      - name: Fill in the app's client ID
+        env:
+          CLIENT_ID: ${{ secrets.DORKO_SHOPIFY_CLIENT_ID }}
+        run: |
+          test -n "$CLIENT_ID" || { echo "DORKO_SHOPIFY_CLIENT_ID secret is missing"; exit 1; }
+          sed -i "s/__DORKO_SHOPIFY_CLIENT_ID__/$CLIENT_ID/" shopify.app.toml
+          grep -q '__DORKO_SHOPIFY_CLIENT_ID__' shopify.app.toml && exit 1 || true
+
+      - run: npm install --no-package-lock
+
+      - name: Deploy
+        run: npx shopify app deploy --allow-updates
+        env:
+          SHOPIFY_APP_AUTOMATION_TOKEN: ${{ secrets.REEM_APP_AUTOMATION_TOKEN }}
