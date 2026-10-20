@@ -192,7 +192,7 @@ function Dashboard() {
       <s-stack direction="block" gap="small-200" alignItems="center" paddingBlock="large">
         <s-divider />
         <s-text color="subdued">
-          Built and maintained by <s-link href="mailto:ali@hanif.pk">Ali Hanif</s-link> · Enigma Logics · Ecommerce Consultant, UX &amp; Shopify Development
+          Built and maintained by <s-link href="https://ali.hanif.pk" target="_blank">Ali Hanif</s-link> · Ecommerce Consultant, UX &amp; Shopify Development
         </s-text>
         <s-text color="subdued">
           Questions or changes: <s-link href="mailto:ali@hanif.pk">ali@hanif.pk</s-link> · <s-link href="https://wa.me/971582285766" target="_blank">+971 58 228 5766</s-link>
