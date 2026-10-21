@@ -61,3 +61,24 @@ test('money-only refunds are flagged instead of guessed', () => {
   assert.equal(rows.length, 1);
   assert.equal(skipped[0].reason, 'refund without returned items');
 });
+
+import { isLive, isExcluded } from '../src/feed.js';
+
+test('orders tagged no-reem are never sent, nor their refunds', () => {
+  const tagged = order({
+    tags: ['Staff test', 'NO-REEM'],
+    refunds: [{ id: 'r1', createdAt: '2026-10-21T12:00:00Z', refundLineItems: { nodes: [{ quantity: 1, lineItem: { id: 'l1' } }] } }],
+  });
+  assert.equal(isExcluded(tagged), true);
+  const { rows, excluded } = buildRows([tagged, order({ id: 'o2', name: '#1002' })], REEM, day);
+  assert.deepEqual(rows.map((r) => r.transaction_id), ['1002']);
+  assert.deepEqual(excluded, ['#1001']);
+});
+
+test('go-live date: nothing before it, and nothing at all without one', () => {
+  assert.equal(isLive('2026-10-20', '2026-10-25'), false);
+  assert.equal(isLive('2026-10-25', '2026-10-25'), true);
+  assert.equal(isLive('2026-10-26', '2026-10-25'), true);
+  assert.equal(isLive('2026-10-26', ''), false);
+  assert.equal(isLive('2026-10-26', 'soon'), false);
+});

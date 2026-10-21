@@ -35,19 +35,39 @@ export function dubaiDayWindow(day) {
   return { start, end: new Date(start.getTime() + 24 * 3600 * 1000) };
 }
 
+// Staff can tag any order with this to keep it away from Reem Mall for good,
+// e.g. test or training sales. Its refunds are skipped too.
+export const EXCLUDE_TAG = 'no-reem';
+
+export function isExcluded(order) {
+  return (order.tags || []).some((t) => t.trim().toLowerCase() === EXCLUDE_TAG);
+}
+
 export function isReemMallPos(order, locationId) {
   return order.sourceName === 'pos' && order.retailLocation?.id === locationId && !order.test;
 }
 
+// Nothing is sent for days before the go-live date (REEM_FEED_START_DATE).
+// No date set means not live yet: the feed holds everything.
+export function isLive(day, startDate) {
+  return Boolean(startDate) && /^\d{4}-\d{2}-\d{2}$/.test(startDate) && day >= startDate;
+}
+
 // orders: Shopify orders processed OR updated in the window (refunds can
-// arrive on older orders). Returns { rows, skipped }.
+// arrive on older orders). Returns { rows, skipped, excluded }.
 export function buildRows(orders, locationId, { start, end }) {
   const rows = [];
   const skipped = [];
+  const excluded = [];
   const inWindow = (iso) => { const t = new Date(iso); return t >= start && t < end; };
 
   for (const o of orders) {
     if (!isReemMallPos(o, locationId)) continue;
+    if (isExcluded(o)) {
+      const touched = inWindow(o.processedAt) || o.refunds.some((r) => inWindow(r.createdAt));
+      if (touched) excluded.push(o.name);
+      continue;
+    }
     const order = normaliseOrder(o);
     if (inWindow(o.processedAt)) rows.push({ ...saleRow(order), _orderId: o.id, _orderName: o.name, _kind: 'sale' });
 
@@ -68,7 +88,7 @@ export function buildRows(orders, locationId, { start, end }) {
     });
   }
   rows.sort((a, b) => a.created_at.localeCompare(b.created_at));
-  return { rows, skipped };
+  return { rows, skipped, excluded };
 }
 
 // Shopify search: every order updated since the window began. That covers

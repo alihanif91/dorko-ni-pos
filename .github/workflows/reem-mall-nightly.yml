@@ -1,8 +1,9 @@
 # Nightly Reem Mall sales feed: yesterday's (Dubai) POS sales and refunds at
 # the Reem Mall location -> Vemcount. Reem Mall asked for 03:00-05:00 AM.
 #
-# Schedule runs only when repo variable REEM_FEED_ENABLED is "true" (set it
-# from the day after the shop opens). Manual runs: pick dry-run or send and
+# Schedule runs only when repo variable REEM_FEED_ENABLED is "true".
+# Nothing is sent for days before REEM_FEED_START_DATE (go-live, YYYY-MM-DD);
+# with no date set, nothing is sent at all. Orders tagged no-reem are never sent. Manual runs: pick dry-run or send and
 # optionally a date (YYYY-MM-DD) to (re)send one day; re-sending is safe.
 # Secrets: DORKO_SHOPIFY_CLIENT_ID, DORKO_SHOPIFY_CLIENT_SECRET,
 #          VEMCOUNT_CLIENT_ID, VEMCOUNT_CLIENT_SECRET
@@ -14,7 +15,12 @@ name: Reem Mall nightly feed
 
 on:
   schedule:
-    - cron: "15 23 * * *"   # 23:15 UTC = 03:15 Dubai
+    # Reem Mall wants the push between 03:00 and 05:00 Dubai. GitHub can
+    # start scheduled runs late, so there are three tries; the first one
+    # that runs does the day, the later ones see it's done and stop.
+    - cron: "7 23 * * *"    # 03:07 Dubai (main)
+    - cron: "37 23 * * *"   # 03:37 Dubai (backup)
+    - cron: "7 0 * * *"     # 04:07 Dubai (backup)
   workflow_dispatch:
     inputs:
       mode:
@@ -59,6 +65,8 @@ jobs:
           DORKO_SHOPIFY_CLIENT_SECRET: ${{ secrets.DORKO_SHOPIFY_CLIENT_SECRET }}
           REEM_LOCATION_NAME: ${{ vars.REEM_LOCATION_NAME || 'Reem Mall Shop' }}
           REEM_LOG_ENABLED: ${{ vars.REEM_LOG_ENABLED || 'false' }}
+          REEM_FEED_START_DATE: ${{ vars.REEM_FEED_START_DATE }}
+          REEM_CATCHUP: ${{ github.event_name == 'schedule' && 'true' || 'false' }}
           VEMCOUNT_CLIENT_ID: ${{ secrets.VEMCOUNT_CLIENT_ID }}
           VEMCOUNT_CLIENT_SECRET: ${{ secrets.VEMCOUNT_CLIENT_SECRET }}
           VEMCOUNT_BASE_URL: ${{ vars.VEMCOUNT_BASE_URL || 'https://vemcount.app' }}

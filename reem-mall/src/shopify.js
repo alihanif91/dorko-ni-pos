@@ -53,6 +53,16 @@ export function createShopify({ shop, clientId, clientSecret, fetchImpl = fetch,
       return loc;
     },
 
+    // The day's log entry, if the job already recorded that day.
+    async dayEntry(day) {
+      const data = await graphql(
+        'query Day($h: MetaobjectHandleInput!) { metaobjectByHandle(handle: $h) { fields { key value } } }',
+        { h: { type: '$app:reem_feed_day', handle: `day-${day}` } },
+      );
+      const fields = data.metaobjectByHandle?.fields;
+      return fields ? Object.fromEntries(fields.map((f) => [f.key, f.value])) : null;
+    },
+
     // All orders matching a Shopify search query, every page.
     async orders(search) {
       const out = [];
@@ -71,7 +81,7 @@ const ORDERS = `query FeedOrders($q: String!, $after: String) {
   orders(first: 50, after: $after, query: $q, sortKey: PROCESSED_AT) {
     pageInfo { hasNextPage endCursor }
     nodes {
-      id name processedAt sourceName taxesIncluded currencyCode test
+      id name processedAt sourceName taxesIncluded currencyCode test tags
       retailLocation { id name }
       lineItems(first: 100) { nodes {
         id quantity

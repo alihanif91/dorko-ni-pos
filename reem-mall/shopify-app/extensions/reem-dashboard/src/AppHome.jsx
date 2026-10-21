@@ -134,12 +134,17 @@ function Dashboard() {
             {visible.map((d) => (
               <s-table-row>
                 <s-table-cell>{d.day}</s-table-cell>
-                <s-table-cell><s-badge tone={STATUS_TONE[d.status]}>{STATUS_LABEL[d.status] || d.status}</s-badge></s-table-cell>
+                <s-table-cell>
+                  <s-stack direction="block" gap="small-300">
+                    <s-badge tone={STATUS_TONE[d.status]}>{STATUS_LABEL[d.status] || d.status}</s-badge>
+                    {d.message && d.status !== 'missing' && <s-text color="subdued">{d.message}</s-text>}
+                  </s-stack>
+                </s-table-cell>
                 <s-table-cell>{d.invoices}</s-table-cell>
                 <s-table-cell>{d.refunds}</s-table-cell>
                 <s-table-cell>{money(d.net)}</s-table-cell>
                 <s-table-cell>{money(d.vat)}</s-table-cell>
-                <s-table-cell>{d.status === 'missing' ? '–' : `${d.accepted}/${d.rows.length}`}</s-table-cell>
+                <s-table-cell>{d.status === 'missing' || d.status === 'not_live' ? '–' : `${d.accepted}/${d.rows.length}`}</s-table-cell>
                 <s-table-cell>
                   {d.rows.length > 0 && <s-button variant="tertiary" onClick={() => setSelected(d.day)}>View</s-button>}
                 </s-table-cell>

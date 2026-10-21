@@ -1,10 +1,10 @@
 // Pure helpers for the Reem Mall dashboard (tested in reem-mall/test).
 
 export const STATUS_LABEL = {
-  sent: 'Sent', no_sales: 'No sales', failed: 'Failed', partial: 'Sent, needs a look', missing: 'No record',
+  sent: 'Sent', no_sales: 'No sales', not_live: 'Before go-live', failed: 'Failed', partial: 'Sent, needs a look', missing: 'No record',
 };
 export const STATUS_TONE = {
-  sent: 'success', no_sales: 'neutral', failed: 'critical', partial: 'warning', missing: 'warning',
+  sent: 'success', no_sales: 'neutral', not_live: 'info', failed: 'critical', partial: 'warning', missing: 'warning',
 };
 
 const num = (v) => (v === '' || v == null ? 0 : Number(v));
@@ -61,7 +61,7 @@ export function filterDays(days, { month = 'all', status = 'all' } = {}) {
 const round = (n) => Number(n.toFixed(2));
 
 export function summarise(days) {
-  const s = { sent: 0, no_sales: 0, failed: 0, partial: 0, missing: 0, invoices: 0, refunds: 0, turnover: 0, discount: 0, net: 0, vat: 0, items: 0 };
+  const s = { sent: 0, no_sales: 0, not_live: 0, failed: 0, partial: 0, missing: 0, invoices: 0, refunds: 0, turnover: 0, discount: 0, net: 0, vat: 0, items: 0 };
   for (const d of days) {
     s[d.status] = (s[d.status] || 0) + 1;
     for (const k of ['invoices', 'refunds', 'turnover', 'discount', 'net', 'vat', 'items']) s[k] += d[k];
