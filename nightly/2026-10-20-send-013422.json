@@ -1,0 +1,256 @@
+{
+  "mode": "send",
+  "day": "2026-10-20",
+  "ranAt": "2026-10-21T01:34:18.231Z",
+  "logEnabled": true,
+  "location": "Reem Mall Shop",
+  "ordersScanned": 9,
+  "rows": [
+    {
+      "transaction_id": "1082",
+      "created_at": "2026-10-20T18:56:37+04:00",
+      "turnover": 280.95,
+      "discount": 0,
+      "vat": 14.05,
+      "transactions": 1,
+      "items": 1,
+      "currency_code": "AED",
+      "category": ""
+    },
+    {
+      "transaction_id": "1083",
+      "created_at": "2026-10-20T19:14:07+04:00",
+      "turnover": 208.57,
+      "discount": 0,
+      "vat": 10.43,
+      "transactions": 1,
+      "items": 1,
+      "currency_code": "AED",
+      "category": ""
+    },
+    {
+      "transaction_id": "1084",
+      "created_at": "2026-10-20T19:15:08+04:00",
+      "turnover": 227.62,
+      "discount": 0,
+      "vat": 11.38,
+      "transactions": 1,
+      "items": 1,
+      "currency_code": "AED",
+      "category": ""
+    },
+    {
+      "transaction_id": "1085",
+      "created_at": "2026-10-20T19:16:03+04:00",
+      "turnover": 218.1,
+      "discount": 0,
+      "vat": 10.9,
+      "transactions": 1,
+      "items": 1,
+      "currency_code": "AED",
+      "category": ""
+    },
+    {
+      "transaction_id": "1083-R1",
+      "created_at": "2026-10-20T19:19:26+04:00",
+      "turnover": -208.57,
+      "discount": 0,
+      "vat": -10.43,
+      "transactions": 1,
+      "items": -1,
+      "currency_code": "AED",
+      "category": "refund"
+    },
+    {
+      "transaction_id": "1084-R1",
+      "created_at": "2026-10-20T19:20:25+04:00",
+      "turnover": -227.62,
+      "discount": 0,
+      "vat": -11.38,
+      "transactions": 1,
+      "items": -1,
+      "currency_code": "AED",
+      "category": "refund"
+    },
+    {
+      "transaction_id": "1085-R1",
+      "created_at": "2026-10-20T19:21:01+04:00",
+      "turnover": -218.1,
+      "discount": 0,
+      "vat": -10.9,
+      "transactions": 1,
+      "items": -1,
+      "currency_code": "AED",
+      "category": "refund"
+    },
+    {
+      "transaction_id": "1086",
+      "created_at": "2026-10-20T19:23:42+04:00",
+      "turnover": 208.57,
+      "discount": 0,
+      "vat": 10.43,
+      "transactions": 1,
+      "items": 1,
+      "currency_code": "AED",
+      "category": ""
+    },
+    {
+      "transaction_id": "1086-R1",
+      "created_at": "2026-10-20T19:37:22+04:00",
+      "turnover": -208.57,
+      "discount": 0,
+      "vat": -10.43,
+      "transactions": 1,
+      "items": -1,
+      "currency_code": "AED",
+      "category": "refund"
+    },
+    {
+      "transaction_id": "1087",
+      "created_at": "2026-10-20T19:43:31+04:00",
+      "turnover": 132.38,
+      "discount": 0,
+      "vat": 6.62,
+      "transactions": 1,
+      "items": 1,
+      "currency_code": "AED",
+      "category": ""
+    },
+    {
+      "transaction_id": "1087-R1",
+      "created_at": "2026-10-20T19:47:25+04:00",
+      "turnover": -132.38,
+      "discount": 0,
+      "vat": -6.62,
+      "transactions": 1,
+      "items": -1,
+      "currency_code": "AED",
+      "category": "refund"
+    },
+    {
+      "transaction_id": "1088",
+      "created_at": "2026-10-20T19:52:05+04:00",
+      "turnover": 141.9,
+      "discount": 0,
+      "vat": 7.1,
+      "transactions": 1,
+      "items": 1,
+      "currency_code": "AED",
+      "category": ""
+    },
+    {
+      "transaction_id": "1088-R1",
+      "created_at": "2026-10-20T19:59:46+04:00",
+      "turnover": -141.9,
+      "discount": 0,
+      "vat": -7.1,
+      "transactions": 1,
+      "items": -1,
+      "currency_code": "AED",
+      "category": "refund"
+    },
+    {
+      "transaction_id": "1089",
+      "created_at": "2026-10-20T20:19:40+04:00",
+      "turnover": 208.57,
+      "discount": 0,
+      "vat": 10.43,
+      "transactions": 1,
+      "items": 1,
+      "currency_code": "AED",
+      "category": ""
+    },
+    {
+      "transaction_id": "1089-R1",
+      "created_at": "2026-10-20T20:23:03+04:00",
+      "turnover": -208.57,
+      "discount": 0,
+      "vat": -10.43,
+      "transactions": 1,
+      "items": -1,
+      "currency_code": "AED",
+      "category": "refund"
+    }
+  ],
+  "skipped": [],
+  "totals": {
+    "invoices": 8,
+    "refunds": 7,
+    "turnover": 280.95,
+    "discount": 0,
+    "net": 280.95,
+    "vat": 14.05,
+    "items": 1
+  },
+  "responses": [
+    {
+      "accepted": 15,
+      "results": [
+        {
+          "transaction_id": "1082",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1083",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1084",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1085",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1083-R1",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1084-R1",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1085-R1",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1086",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1086-R1",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1087",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1087-R1",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1088",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1088-R1",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1089",
+          "action": "created"
+        },
+        {
+          "transaction_id": "1089-R1",
+          "action": "created"
+        }
+      ]
+    }
+  ],
+  "accepted": 15,
+  "ordersRecorded": 8,
+  "logged": true,
+  "status": "sent"
+}
