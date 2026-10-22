@@ -50,3 +50,21 @@ test('Shopify errors surface instead of being silently ignored', async () => {
   const log = createLog(async () => ({ metaobjectUpsert: { userErrors: [{ message: 'Access denied' }] } }));
   await assert.rejects(log.recordDay({ day: 'd', status: 'sent', ranAt: 'r' }), /Access denied/);
 });
+
+test('clearOrders removes feed marks only from orders that have them', async () => {
+  const calls = [];
+  const log = createLog(async (q, v) => {
+    calls.push({ q, v });
+    return q.includes('metafieldsDelete')
+      ? { metafieldsDelete: { deletedMetafields: [], userErrors: [] } }
+      : { tagsRemove: { node: { id: v.id }, userErrors: [] } };
+  });
+  const cleared = await log.clearOrders([
+    { id: 'gid://shopify/Order/1', name: '#1082', tags: [SALE_TAG], metafield: { value: '[]' } },
+    { id: 'gid://shopify/Order/2', name: '#1083', tags: ['no-reem'], metafield: null },
+  ]);
+  assert.deepEqual(cleared, ['#1082']);
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0].v.metafields, [{ ownerId: 'gid://shopify/Order/1', namespace: '$app', key: 'reem_feed' }]);
+  assert.deepEqual(calls[1].v, { id: 'gid://shopify/Order/1', tags: [SALE_TAG, REFUND_TAG] });
+});

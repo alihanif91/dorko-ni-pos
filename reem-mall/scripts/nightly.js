@@ -15,7 +15,7 @@
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { createShopify } from '../src/shopify.js';
 import { createVemcount } from '../src/vemcount.js';
-import { buildRows, dubaiDayWindow, searchFor, toVemcount, totals, loadExcludedOrders, EXCLUDE_TAG } from '../src/feed.js';
+import { buildRows, dubaiDayWindow, searchFor, toVemcount, totals, loadExcludedOrders } from '../src/feed.js';
 import { createLog, parseExisting } from '../src/log.js';
 
 const [mode = 'dry-run', dayArg, out] = process.argv.slice(2);
@@ -61,8 +61,12 @@ try {
   const built = buildRows(orders, location.id, window, excludedNames);
   rows = built.rows;
   Object.assign(report, { ordersScanned: orders.length, rows: rows.map(toVemcount), skipped: built.skipped, excluded: built.excluded });
-  const notes = [];
-  if (built.excluded.length) notes.push(`Not sent (test, tagged ${EXCLUDE_TAG} or excluded): ${built.excluded.join(', ')}`);
+  // Test orders stay out of the dashboard entirely; they're listed only in
+  // this run's report.
+  report.excludedOrders = orders.filter((o) => built.excluded.includes(o.name));
+  report.toClear = report.excludedOrders
+    .filter((o) => o.metafield?.value || (o.tags || []).some((t) => t.startsWith('reem-mall-')))
+    .map((o) => o.name);
   report.totals = totals(rows);
   report.existing = parseExisting(orders);
 
@@ -99,7 +103,6 @@ try {
     } else {
       status = rows.length ? 'sent' : 'no_sales';
     }
-    if (status !== 'failed' && notes.length) message = [message, ...notes].filter(Boolean).join(' · ');
   }
 } catch (err) {
   report.error = { message: err.message, status: err.status, body: err.body };
@@ -121,6 +124,7 @@ if (logEnabled && shopify) {
     if (status === 'sent' || status === 'partial') {
       report.ordersRecorded = await log.recordOrders(rows, report.existing || new Map(), report.ranAt);
     }
+    if (report.excludedOrders?.length) report.cleared = await log.clearOrders(report.excludedOrders);
     report.logged = true;
   } catch (err) {
     report.logError = err.message;
@@ -130,6 +134,7 @@ if (logEnabled && shopify) {
 }
 
 delete report.existing;
+delete report.excludedOrders;
 report.status = mode === 'send' ? status : 'dry-run';
 if (out) writeFileSync(out, JSON.stringify(report, null, 2));
 process.exit(exitCode);

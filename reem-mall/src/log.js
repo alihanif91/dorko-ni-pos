@@ -19,6 +19,12 @@ const SET_METAFIELDS = `mutation SetFeed($metafields: [MetafieldsSetInput!]!) {
 const ADD_TAGS = `mutation Tag($id: ID!, $tags: [String!]!) {
   tagsAdd(id: $id, tags: $tags) { node { id } userErrors { field message } }
 }`;
+const REMOVE_TAGS = `mutation Untag($id: ID!, $tags: [String!]!) {
+  tagsRemove(id: $id, tags: $tags) { node { id } userErrors { field message } }
+}`;
+const DELETE_METAFIELDS = `mutation ClearFeed($metafields: [MetafieldIdentifierInput!]!) {
+  metafieldsDelete(metafields: $metafields) { deletedMetafields { key } userErrors { field message } }
+}`;
 
 // status: sent | no_sales | failed | partial
 export function dayFields({ day, status, totals, accepted, message, rows, ranAt }) {
@@ -88,6 +94,21 @@ export function createLog(graphql) {
         check(await graphql(ADD_TAGS, { id: orderId, tags }), 'tagsAdd');
       }
       return byOrder.size;
+    },
+
+    // Excluded (test) orders that were sent before they were excluded: take
+    // off the "sent" tags and feed record so they don't look sent in admin.
+    async clearOrders(orders) {
+      const marked = orders.filter((o) => o.metafield?.value
+        || (o.tags || []).some((t) => t === SALE_TAG || t === REFUND_TAG));
+      for (let i = 0; i < marked.length; i += 25) {
+        const metafields = marked.slice(i, i + 25).map((o) => ({ ownerId: o.id, namespace: '$app', key: 'reem_feed' }));
+        check(await graphql(DELETE_METAFIELDS, { metafields }), 'metafieldsDelete');
+      }
+      for (const o of marked) {
+        check(await graphql(REMOVE_TAGS, { id: o.id, tags: [SALE_TAG, REFUND_TAG] }), 'tagsRemove');
+      }
+      return marked.map((o) => o.name);
     },
   };
 }
