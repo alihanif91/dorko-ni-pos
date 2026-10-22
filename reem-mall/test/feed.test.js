@@ -62,7 +62,7 @@ test('money-only refunds are flagged instead of guessed', () => {
   assert.equal(skipped[0].reason, 'refund without returned items');
 });
 
-import { isLive, isExcluded } from '../src/feed.js';
+import { isExcluded, loadExcludedOrders } from '../src/feed.js';
 
 test('orders tagged no-reem are never sent, nor their refunds', () => {
   const tagged = order({
@@ -75,10 +75,11 @@ test('orders tagged no-reem are never sent, nor their refunds', () => {
   assert.deepEqual(excluded, ['#1001']);
 });
 
-test('go-live date: nothing before it, and nothing at all without one', () => {
-  assert.equal(isLive('2026-10-20', '2026-10-25'), false);
-  assert.equal(isLive('2026-10-25', '2026-10-25'), true);
-  assert.equal(isLive('2026-10-26', '2026-10-25'), true);
-  assert.equal(isLive('2026-10-26', ''), false);
-  assert.equal(isLive('2026-10-26', 'soon'), false);
+test('orders listed in excluded-orders.txt are skipped with their refunds', () => {
+  const names = loadExcludedOrders('# comment\n#1001\n1005\nnot an order\n');
+  assert.deepEqual([...names], ['#1001', '#1005']);
+  const o = order({ refunds: [{ id: 'r1', createdAt: '2026-10-21T12:00:00Z', refundLineItems: { nodes: [{ quantity: 1, lineItem: { id: 'l1' } }] } }] });
+  const { rows, excluded } = buildRows([o], REEM, day, names);
+  assert.equal(rows.length, 0);
+  assert.deepEqual(excluded, ['#1001']);
 });

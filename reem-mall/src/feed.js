@@ -39,8 +39,15 @@ export function dubaiDayWindow(day) {
 // e.g. test or training sales. Its refunds are skipped too.
 export const EXCLUDE_TAG = 'no-reem';
 
-export function isExcluded(order) {
-  return (order.tags || []).some((t) => t.trim().toLowerCase() === EXCLUDE_TAG);
+// Also never sent: order numbers listed in reem-mall/excluded-orders.txt.
+export function loadExcludedOrders(text) {
+  return new Set(String(text || '').split('\n').map((l) => l.trim())
+    .filter((l) => /^#?\d+$/.test(l)).map((l) => (l.startsWith('#') ? l : `#${l}`)));
+}
+
+export function isExcluded(order, excludedNames = new Set()) {
+  return excludedNames.has(order.name)
+    || (order.tags || []).some((t) => t.trim().toLowerCase() === EXCLUDE_TAG);
 }
 
 export function isReemMallPos(order, locationId) {
@@ -55,7 +62,7 @@ export function isLive(day, startDate) {
 
 // orders: Shopify orders processed OR updated in the window (refunds can
 // arrive on older orders). Returns { rows, skipped, excluded }.
-export function buildRows(orders, locationId, { start, end }) {
+export function buildRows(orders, locationId, { start, end }, excludedNames = new Set()) {
   const rows = [];
   const skipped = [];
   const excluded = [];
@@ -63,7 +70,7 @@ export function buildRows(orders, locationId, { start, end }) {
 
   for (const o of orders) {
     if (!isReemMallPos(o, locationId)) continue;
-    if (isExcluded(o)) {
+    if (isExcluded(o, excludedNames)) {
       const touched = inWindow(o.processedAt) || o.refunds.some((r) => inWindow(r.createdAt));
       if (touched) excluded.push(o.name);
       continue;

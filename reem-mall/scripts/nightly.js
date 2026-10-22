@@ -7,22 +7,22 @@
 // Env: DORKO_SHOP, DORKO_SHOPIFY_CLIENT_ID, DORKO_SHOPIFY_CLIENT_SECRET,
 //      REEM_LOCATION_NAME (default "Reem Mall Shop"),
 //      REEM_LOG_ENABLED ("true" to write the day log + order records),
-//      REEM_FEED_START_DATE (YYYY-MM-DD go-live; earlier days are never sent,
-//        and with no date set nothing is sent at all),
+//      (orders tagged no-reem or listed in excluded-orders.txt are never sent)
 //      REEM_CATCHUP ("true" on backup runs: skip if the day is already done),
 //      VEMCOUNT_CLIENT_ID, VEMCOUNT_CLIENT_SECRET, VEMCOUNT_BASE_URL (send only)
 // Exit codes: 0 ok, 1 send failed, 2 something needs a look, 3 sent but the
 // Shopify log could not be written.
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { createShopify } from '../src/shopify.js';
 import { createVemcount } from '../src/vemcount.js';
-import { buildRows, dubaiDayWindow, searchFor, toVemcount, totals, isLive, EXCLUDE_TAG } from '../src/feed.js';
+import { buildRows, dubaiDayWindow, searchFor, toVemcount, totals, loadExcludedOrders, EXCLUDE_TAG } from '../src/feed.js';
 import { createLog, parseExisting } from '../src/log.js';
 
 const [mode = 'dry-run', dayArg, out] = process.argv.slice(2);
 const env = process.env;
 const logEnabled = env.REEM_LOG_ENABLED === 'true' && mode === 'send';
-const startDate = (env.REEM_FEED_START_DATE || '').trim();
+const excludedFile = new URL('../excluded-orders.txt', import.meta.url);
+const excludedNames = loadExcludedOrders(existsSync(excludedFile) ? readFileSync(excludedFile, 'utf8') : '');
 
 function yesterdayInDubai(now = new Date()) {
   const dubai = new Date(now.getTime() + 4 * 3600 * 1000);
@@ -58,11 +58,11 @@ try {
   report.location = location.name;
   const window = dubaiDayWindow(day);
   const orders = await shopify.orders(searchFor(window));
-  const built = buildRows(orders, location.id, window);
+  const built = buildRows(orders, location.id, window, excludedNames);
   rows = built.rows;
   Object.assign(report, { ordersScanned: orders.length, rows: rows.map(toVemcount), skipped: built.skipped, excluded: built.excluded });
   const notes = [];
-  if (built.excluded.length) notes.push(`Not sent, tagged ${EXCLUDE_TAG}: ${built.excluded.join(', ')}`);
+  if (built.excluded.length) notes.push(`Not sent (test, tagged ${EXCLUDE_TAG} or excluded): ${built.excluded.join(', ')}`);
   report.totals = totals(rows);
   report.existing = parseExisting(orders);
 
@@ -72,17 +72,7 @@ try {
   console.log('totals', report.totals);
   if (built.skipped.length) console.warn('NEEDS A LOOK:', built.skipped);
 
-  if (mode === 'send' && !isLive(day, startDate)) {
-    // Before go-live: nothing goes to Reem Mall, the day is still logged.
-    status = 'not_live';
-    message = [startDate ? `Before go-live (${startDate})` : 'Go-live date not set',
-      rows.length ? `${rows.length} POS rows not sent` : '', ...notes].filter(Boolean).join(' · ');
-    report.heldRows = rows.length;
-    rows = [];
-    report.totals = totals([]);
-    report.accepted = 0;
-    console.log(`Not live for ${day}: ${message}`);
-  } else if (mode === 'send') {
+  if (mode === 'send') {
     if (rows.length) {
       const vemcount = createVemcount({
         baseUrl: env.VEMCOUNT_BASE_URL || 'https://vemcount.app',

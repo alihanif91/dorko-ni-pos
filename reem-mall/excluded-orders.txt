@@ -1,0 +1,11 @@
+# Orders that must never go to Reem Mall (and neither must their refunds).
+# One order number per line. Same effect as tagging the order "no-reem".
+# 20 Oct 2026: staff test sales before opening (confirmed by Ziad).
+#1082
+#1083
+#1084
+#1085
+#1086
+#1087
+#1088
+#1089

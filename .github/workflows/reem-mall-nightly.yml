@@ -2,8 +2,8 @@
 # the Reem Mall location -> Vemcount. Reem Mall asked for 03:00-05:00 AM.
 #
 # Schedule runs only when repo variable REEM_FEED_ENABLED is "true".
-# Nothing is sent for days before REEM_FEED_START_DATE (go-live, YYYY-MM-DD);
-# with no date set, nothing is sent at all. Orders tagged no-reem are never sent. Manual runs: pick dry-run or send and
+# Orders tagged no-reem, or listed in reem-mall/excluded-orders.txt, are never sent.
+# Manual runs: pick dry-run or send and
 # optionally a date (YYYY-MM-DD) to (re)send one day; re-sending is safe.
 # Secrets: DORKO_SHOPIFY_CLIENT_ID, DORKO_SHOPIFY_CLIENT_SECRET,
 #          VEMCOUNT_CLIENT_ID, VEMCOUNT_CLIENT_SECRET
@@ -65,7 +65,6 @@ jobs:
           DORKO_SHOPIFY_CLIENT_SECRET: ${{ secrets.DORKO_SHOPIFY_CLIENT_SECRET }}
           REEM_LOCATION_NAME: ${{ vars.REEM_LOCATION_NAME || 'Reem Mall Shop' }}
           REEM_LOG_ENABLED: ${{ vars.REEM_LOG_ENABLED || 'false' }}
-          REEM_FEED_START_DATE: ${{ vars.REEM_FEED_START_DATE }}
           REEM_CATCHUP: ${{ github.event_name == 'schedule' && 'true' || 'false' }}
           VEMCOUNT_CLIENT_ID: ${{ secrets.VEMCOUNT_CLIENT_ID }}
           VEMCOUNT_CLIENT_SECRET: ${{ secrets.VEMCOUNT_CLIENT_SECRET }}
