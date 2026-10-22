@@ -1,0 +1,53 @@
+{
+  "mode": "send",
+  "day": "2026-10-20",
+  "ranAt": "2026-10-22T11:20:23.442Z",
+  "logEnabled": true,
+  "location": "Reem Mall Shop",
+  "ordersScanned": 14,
+  "rows": [],
+  "skipped": [],
+  "excluded": [
+    "#1082",
+    "#1083",
+    "#1084",
+    "#1085",
+    "#1086",
+    "#1087",
+    "#1088",
+    "#1089"
+  ],
+  "toClear": [
+    "#1082",
+    "#1083",
+    "#1084",
+    "#1085",
+    "#1086",
+    "#1087",
+    "#1088",
+    "#1089"
+  ],
+  "totals": {
+    "invoices": 0,
+    "refunds": 0,
+    "turnover": 0,
+    "discount": 0,
+    "net": 0,
+    "vat": 0,
+    "items": 0
+  },
+  "responses": [],
+  "accepted": 0,
+  "cleared": [
+    "#1082",
+    "#1083",
+    "#1084",
+    "#1085",
+    "#1086",
+    "#1087",
+    "#1088",
+    "#1089"
+  ],
+  "logged": true,
+  "status": "no_sales"
+}
