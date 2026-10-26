@@ -15,12 +15,14 @@ name: Reem Mall nightly feed
 
 on:
   schedule:
-    # Reem Mall wants the push between 03:00 and 05:00 Dubai. GitHub can
-    # start scheduled runs late, so there are three tries; the first one
-    # that runs does the day, the later ones see it's done and stop.
-    - cron: "7 23 * * *"    # 03:07 Dubai (main)
-    - cron: "37 23 * * *"   # 03:37 Dubai (backup)
-    - cron: "7 0 * * *"     # 04:07 Dubai (backup)
+    # Reem Mall wants the push between 03:00 and 05:00 Dubai. GitHub starts
+    # scheduled runs late here (seen: 2h to 4h30m), so the schedule is set
+    # early and the job waits until 03:02 Dubai if it starts before 03:00.
+    # Three tries; the first one that runs does the day, the later ones see
+    # it's done and stop.
+    - cron: "7 20 * * *"    # 00:07 Dubai (main)
+    - cron: "37 20 * * *"   # 00:37 Dubai (backup)
+    - cron: "7 21 * * *"    # 01:07 Dubai (backup)
   workflow_dispatch:
     inputs:
       mode:
@@ -45,12 +47,23 @@ jobs:
   feed:
     if: github.event_name == 'workflow_dispatch' || vars.REEM_FEED_ENABLED == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 240   # includes waiting for 03:02 Dubai
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Wait for the 03:00-05:00 Dubai window
+        if: github.event_name == 'schedule'
+        run: |
+          now=$(date -u +%s)
+          target=$(date -u -d "$(TZ=Asia/Dubai date +%F) 03:02 +04:00" +%s)
+          if [ "$now" -lt "$target" ]; then
+            echo "Started at $(TZ=Asia/Dubai date +%H:%M) Dubai, waiting until 03:02"
+            sleep $(( target - now ))
+          fi
+          echo "Running at $(TZ=Asia/Dubai date +%H:%M) Dubai"
 
       - name: Unit tests
         working-directory: reem-mall
