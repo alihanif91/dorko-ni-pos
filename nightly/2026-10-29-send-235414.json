@@ -1,0 +1,48 @@
+{
+  "mode": "send",
+  "day": "2026-10-29",
+  "ranAt": "2026-10-29T23:54:12.242Z",
+  "logEnabled": true,
+  "location": "Reem Mall Shop",
+  "ordersScanned": 18,
+  "rows": [
+    {
+      "transaction_id": "1105",
+      "created_at": "2026-10-29T17:05:44+04:00",
+      "turnover": 408.57,
+      "discount": 0,
+      "vat": 20.43,
+      "transactions": 1,
+      "items": 1,
+      "currency_code": "AED",
+      "category": ""
+    }
+  ],
+  "skipped": [],
+  "excluded": [],
+  "toClear": [],
+  "totals": {
+    "invoices": 1,
+    "refunds": 0,
+    "turnover": 408.57,
+    "discount": 0,
+    "net": 408.57,
+    "vat": 20.43,
+    "items": 1
+  },
+  "responses": [
+    {
+      "accepted": 1,
+      "results": [
+        {
+          "transaction_id": "1105",
+          "action": "created"
+        }
+      ]
+    }
+  ],
+  "accepted": 1,
+  "ordersRecorded": 1,
+  "logged": true,
+  "status": "sent"
+}
