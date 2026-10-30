@@ -1,0 +1,25 @@
+{
+  "mode": "send",
+  "day": "2026-10-30",
+  "ranAt": "2026-10-30T23:36:45.754Z",
+  "logEnabled": true,
+  "location": "Reem Mall Shop",
+  "ordersScanned": 1,
+  "rows": [],
+  "skipped": [],
+  "excluded": [],
+  "toClear": [],
+  "totals": {
+    "invoices": 0,
+    "refunds": 0,
+    "turnover": 0,
+    "discount": 0,
+    "net": 0,
+    "vat": 0,
+    "items": 0
+  },
+  "responses": [],
+  "accepted": 0,
+  "logged": true,
+  "status": "no_sales"
+}
