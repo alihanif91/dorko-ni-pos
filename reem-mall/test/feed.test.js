@@ -83,3 +83,45 @@ test('orders listed in excluded-orders.txt are skipped with their refunds', () =
   assert.equal(rows.length, 0);
   assert.deepEqual(excluded, ['#1001']);
 });
+
+// Order #1098, 25 Oct: 1 pair sold at 429, swapped for another pair at 429
+// with POS "Return or exchange". Shopify adds the new pair to the order and
+// records a refund for the returned pair.
+const exchanged = (over = {}) => order({
+  id: 'o98', name: '#1098', processedAt: '2026-10-21T09:51:00Z',
+  lineItems: { nodes: [li('l1', 1, '429.00', 0, '20.43'), li('l9', 1, '429.00', 0, '20.43')] },
+  refunds: [{ id: 'r1', createdAt: '2026-10-21T10:53:00Z', return: { id: 'ret1' },
+    refundLineItems: { nodes: [{ quantity: 1, lineItem: { id: 'l1' } }] } }],
+  returns: { nodes: [{ id: 'ret1', createdAt: '2026-10-21T10:53:00Z',
+    returnLineItems: { nodes: [{ quantity: 1, fulfillmentLineItem: { lineItem: { id: 'l1' } } }] },
+    exchangeLineItems: { nodes: [{ lineItems: [{ id: 'l9' }] }] } }] },
+  ...over,
+});
+
+test('an even POS exchange is not a refund: one sale of the original item, nothing else', () => {
+  const { rows } = buildRows([exchanged()], REEM, day);
+  assert.deepEqual(rows.map((r) => [r.transaction_id, r.turnover, r.vat, r.items]), [['1098', 408.57, 20.43, 1]]);
+});
+
+test('an exchange with a price difference sends only the difference', () => {
+  const o = exchanged({ lineItems: { nodes: [li('l1', 1, '429.00', 0, '20.43'), li('l9', 1, '525.00', 0, '25.00')] } });
+  const { rows } = buildRows([o], REEM, day);
+  assert.deepEqual(rows.map((r) => [r.transaction_id, r.turnover, r.vat, r.items, r.category]),
+    [['1098', 408.57, 20.43, 1, ''], ['1098-X1', 91.43, 4.57, 0, '']]);
+});
+
+test('an exchange on a later day leaves the earlier sale alone', () => {
+  const o = exchanged({ processedAt: '2026-10-19T09:51:00Z' });
+  assert.deepEqual(buildRows([o], REEM, day).rows, []);
+});
+
+test('a refund sent earlier for what was really an exchange is cancelled with a zero row', () => {
+  const sent = [
+    { id: '1098', at: '2026-10-21T13:51:00+04:00', turnover: 817.14, discount: 0, vat: 40.86, items: 2 },
+    { id: '1098-R1', at: '2026-10-21T14:53:00+04:00', turnover: -408.57, discount: 0, vat: -20.43, items: -1 },
+  ];
+  const o = exchanged({ metafield: { value: JSON.stringify(sent) } });
+  const { rows } = buildRows([o], REEM, day);
+  assert.deepEqual(rows.map((r) => [r.transaction_id, r.turnover, r.vat, r.items]),
+    [['1098', 408.57, 20.43, 1], ['1098-R1', 0, 0, 0]]);
+});

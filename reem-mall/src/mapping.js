@@ -103,3 +103,37 @@ export function refundRow(order, refund, refundIndex = 1) {
     category: refundedQty >= soldQty ? 'refund' : 'partial-refund',
   };
 }
+
+// An exchange made with POS's native "Return or exchange": the returned items
+// come back and the new items are added to the same order. For Reem Mall it is
+// not a refund. Only the price difference is reported, as one row on the day
+// of the exchange; an even swap returns null and nothing is sent.
+// returned: [{ lineItemId, quantity }]; added: [lineItemId] (new order lines).
+export function exchangeRow(order, { id, createdAt, returned, added }, index = 1) {
+  const byId = new Map(order.lineItems.map((l) => [l.id, l]));
+  const get = (lid) => {
+    const line = byId.get(lid);
+    if (!line) throw new Error(`Exchange ${id} has an unknown line item ${lid}`);
+    return line;
+  };
+  const inParts = added.map((lid) => { const l = get(lid); return lineParts(l, l.quantity, order.taxesIncluded); });
+  const outParts = returned.map((r) => lineParts(get(r.lineItemId), r.quantity, order.taxesIncluded));
+  const a = reconcile(sum(inParts));
+  const b = reconcile(sum(outParts));
+  const items = added.reduce((n, lid) => n + get(lid).quantity, 0) - returned.reduce((n, r) => n + r.quantity, 0);
+  const t = { turnover: a.turnover - b.turnover, discount: a.discount - b.discount, vat: a.vat - b.vat };
+  if (!t.turnover && !t.discount && !t.vat && !items) return null;
+  return {
+    transaction_id: `${invoiceId(order.name)}-X${index}`,
+    created_at: createdAt,
+    turnover: toAed(t.turnover),
+    discount: toAed(-t.discount),
+    vat: toAed(t.vat),
+    transactions: 1,
+    items,
+    currency_code: order.currency,
+    // Only categories Reem Mall already accepts: a top-up is a sale, money
+    // back is a partial refund.
+    category: t.turnover - t.discount + t.vat < 0 ? 'partial-refund' : '',
+  };
+}

@@ -6,7 +6,7 @@
 //     happened in Dubai time
 //   - test orders are skipped
 // Re-sending a day is safe: the same transaction_id updates the same row.
-import { saleRow, refundRow } from './mapping.js';
+import { saleRow, refundRow, exchangeRow } from './mapping.js';
 import { dubaiTime } from '../scripts/scenarios.js';
 
 const sumMoney = (list, pick) => list.reduce((s, x) => s + Number(pick(x)), 0);
@@ -75,12 +75,41 @@ export function buildRows(orders, locationId, { start, end }, excludedNames = ne
       if (touched) excluded.push(o.name);
       continue;
     }
+    // Native POS exchanges: the new items sit on the same order. They are not
+    // part of the original sale, and the exchange is not a refund.
+    const exchanges = (o.returns?.nodes || [])
+      .map((ret) => ({
+        id: ret.id,
+        createdAt: ret.createdAt,
+        added: ret.exchangeLineItems.nodes.flatMap((x) => (x.lineItems || []).map((l) => l.id)),
+        returned: ret.returnLineItems.nodes
+          .filter((n) => n.fulfillmentLineItem)
+          .map((n) => ({ lineItemId: n.fulfillmentLineItem.lineItem.id, quantity: n.quantity })),
+      }))
+      .filter((x) => x.added.length)
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const exchangeReturnIds = new Set(exchanges.map((x) => x.id));
+    const addedIds = new Set(exchanges.flatMap((x) => x.added));
+
     const order = normaliseOrder(o);
-    if (inWindow(o.processedAt)) rows.push({ ...saleRow(order), _orderId: o.id, _orderName: o.name, _kind: 'sale' });
+    const original = { ...order, lineItems: order.lineItems.filter((l) => !addedIds.has(l.id)) };
+    const produced = new Set();
+    const push = (row, kind) => {
+      produced.add(row.transaction_id);
+      rows.push({ ...row, _orderId: o.id, _orderName: o.name, _kind: kind });
+    };
+    if (inWindow(o.processedAt)) push(saleRow(original), 'sale');
+
+    exchanges.forEach((x, i) => {
+      if (!inWindow(x.createdAt)) return;
+      const row = exchangeRow(order, { ...x, createdAt: dubaiTime(new Date(x.createdAt)) }, i + 1);
+      if (row) push(row, 'exchange');
+    });
 
     const refunds = [...o.refunds].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     refunds.forEach((r, i) => {
       if (!inWindow(r.createdAt)) return;
+      if (r.return && exchangeReturnIds.has(r.return.id)) return; // part of an exchange
       const lines = r.refundLineItems.nodes.map((n) => ({ lineItemId: n.lineItem.id, quantity: n.quantity }));
       if (!lines.length) {
         // Money-only refund with no items returned: can't be split into
@@ -88,11 +117,22 @@ export function buildRows(orders, locationId, { start, end }, excludedNames = ne
         skipped.push({ order: o.name, refund: r.id, reason: 'refund without returned items' });
         return;
       }
-      rows.push({
-        ...refundRow(order, { id: r.id, createdAt: dubaiTime(new Date(r.createdAt)), lineItems: lines }, i + 1),
-        _orderId: o.id, _orderName: o.name, _kind: 'refund',
-      });
+      push(refundRow(order, { id: r.id, createdAt: dubaiTime(new Date(r.createdAt)), lineItems: lines }, i + 1), 'refund');
     });
+
+    // A row sent earlier for this day that no longer applies (e.g. an exchange
+    // first sent as a refund) is sent again as zero, so it cancels out at the
+    // mall. Vemcount can't delete single rows.
+    let history = [];
+    try { history = JSON.parse(o.metafield?.value || '[]'); } catch { history = []; }
+    for (const h of history) {
+      if (produced.has(h.id) || !h.at || !inWindow(h.at)) continue;
+      if (!Number(h.turnover) && !Number(h.discount) && !Number(h.vat) && !Number(h.items)) continue;
+      push({
+        transaction_id: h.id, created_at: h.at, turnover: 0, discount: 0, vat: 0,
+        transactions: 1, items: 0, currency_code: order.currency, category: '',
+      }, 'void');
+    }
   }
   rows.sort((a, b) => a.created_at.localeCompare(b.created_at));
   return { rows, skipped, excluded };

@@ -89,7 +89,12 @@ const ORDERS = `query FeedOrders($q: String!, $after: String) {
         discountAllocations { allocatedAmountSet { shopMoney { amount } } }
         taxLines { rate priceSet { shopMoney { amount } } }
       } }
-      refunds { id createdAt refundLineItems(first: 100) { nodes { quantity lineItem { id } } } }
+      refunds { id createdAt return { id } refundLineItems(first: 100) { nodes { quantity lineItem { id } } } }
+      returns(first: 20) { nodes {
+        id createdAt
+        returnLineItems(first: 50) { nodes { ... on ReturnLineItem { quantity fulfillmentLineItem { lineItem { id } } } } }
+        exchangeLineItems(first: 50) { nodes { lineItems { id } } }
+      } }
       metafield(namespace: "$app", key: "reem_feed") { value }
     }
   }

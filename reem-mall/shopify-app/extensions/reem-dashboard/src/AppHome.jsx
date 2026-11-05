@@ -31,6 +31,8 @@ async function loadDays() {
   return withMissingDays(parseDays(nodes), yesterdayInDubai());
 }
 
+const KIND = { sale: ['Sale', 'info'], refund: ['Refund', 'warning'], exchange: ['Exchange', 'info'], void: ['Cancelled', 'neutral'] };
+
 function Dashboard() {
   const [days, setDays] = useState(null);
   const [error, setError] = useState('');
@@ -237,7 +239,7 @@ function RowsTable({ rows, showDay = false }) {
           <s-table-row>
             {showDay && <s-table-cell>{r.day}</s-table-cell>}
             <s-table-cell>{r.id}</s-table-cell>
-            <s-table-cell><s-badge tone={r.kind === 'refund' ? 'warning' : 'info'}>{r.kind === 'refund' ? 'Refund' : 'Sale'}</s-badge></s-table-cell>
+            <s-table-cell><s-badge tone={KIND[r.kind]?.[1] || 'info'}>{KIND[r.kind]?.[0] || 'Sale'}</s-badge></s-table-cell>
             <s-table-cell>{String(r.at || '').slice(11, 16)}</s-table-cell>
             <s-table-cell>{money(r.turnover)}</s-table-cell>
             <s-table-cell>{money(r.discount)}</s-table-cell>
