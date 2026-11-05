@@ -90,11 +90,15 @@ test('orders listed in excluded-orders.txt are skipped with their refunds', () =
 const exchanged = (over = {}) => order({
   id: 'o98', name: '#1098', processedAt: '2026-10-21T09:51:00Z',
   lineItems: { nodes: [li('l1', 1, '429.00', 0, '20.43'), li('l9', 1, '429.00', 0, '20.43')] },
-  refunds: [{ id: 'r1', createdAt: '2026-10-21T10:53:00Z', return: { id: 'ret1' },
+  refunds: [{ id: 'r1', createdAt: '2026-10-21T10:53:00Z',
     refundLineItems: { nodes: [{ quantity: 1, lineItem: { id: 'l1' } }] } }],
-  returns: { nodes: [{ id: 'ret1', createdAt: '2026-10-21T10:53:00Z',
-    returnLineItems: { nodes: [{ quantity: 1, fulfillmentLineItem: { lineItem: { id: 'l1' } } }] },
-    exchangeLineItems: { nodes: [{ lineItems: [{ id: 'l9' }] }] } }] },
+  agreements: [
+    { happenedAt: '2026-10-21T09:51:00Z', reason: 'ORDER', sales: { nodes: [{ actionType: 'ORDER', quantity: 1, lineItem: { id: 'l1' } }] } },
+    { happenedAt: '2026-10-21T10:53:00Z', reason: 'RETURN', sales: { nodes: [
+      { actionType: 'RETURN', quantity: -1, lineItem: { id: 'l1' } },
+      { actionType: 'ORDER', quantity: 1, lineItem: { id: 'l9' } },
+    ] } },
+  ],
   ...over,
 });
 
@@ -124,4 +128,11 @@ test('a refund sent earlier for what was really an exchange is cancelled with a 
   const { rows } = buildRows([o], REEM, day);
   assert.deepEqual(rows.map((r) => [r.transaction_id, r.turnover, r.vat, r.items]),
     [['1098', 408.57, 20.43, 1], ['1098-R1', 0, 0, 0]]);
+});
+
+test('a plain return (no new items) is still a refund', () => {
+  const o = exchanged({ agreements: [{ happenedAt: '2026-10-21T10:53:00Z', reason: 'RETURN',
+    sales: { nodes: [{ actionType: 'RETURN', quantity: -1, lineItem: { id: 'l1' } }] } }] });
+  const { rows } = buildRows([o], REEM, day);
+  assert.deepEqual(rows.map((r) => r.transaction_id), ['1098', '1098-R1']);
 });

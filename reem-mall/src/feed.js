@@ -77,18 +77,32 @@ export function buildRows(orders, locationId, { start, end }, excludedNames = ne
     }
     // Native POS exchanges: the new items sit on the same order. They are not
     // part of the original sale, and the exchange is not a refund.
-    const exchanges = (o.returns?.nodes || [])
-      .map((ret) => ({
-        id: ret.id,
-        createdAt: ret.createdAt,
-        added: ret.exchangeLineItems.nodes.flatMap((x) => (x.lineItems || []).map((l) => l.id)),
-        returned: ret.returnLineItems.nodes
-          .filter((n) => n.fulfillmentLineItem)
-          .map((n) => ({ lineItemId: n.fulfillmentLineItem.lineItem.id, quantity: n.quantity })),
-      }))
+    // In the order's sales history an exchange is a RETURN agreement that
+    // both takes items back and adds new ones (sales with action ORDER).
+    const exchanges = (o.agreements || [])
+      .filter((a) => a.reason === 'RETURN')
+      .map((a, i) => {
+        const product = a.sales.nodes.filter((x) => x.lineItem);
+        return {
+          id: `agreement-${i}`,
+          createdAt: a.happenedAt,
+          added: product.filter((x) => x.actionType === 'ORDER').map((x) => x.lineItem.id),
+          returned: product.filter((x) => x.actionType === 'RETURN')
+            .map((x) => ({ lineItemId: x.lineItem.id, quantity: Math.abs(x.quantity || 0) })),
+        };
+      })
       .filter((x) => x.added.length)
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-    const exchangeReturnIds = new Set(exchanges.map((x) => x.id));
+    // Returned quantities per line that belong to exchanges, so the matching
+    // refund records are recognised and not sent as refunds.
+    const exchangedBack = new Map();
+    for (const x of exchanges) for (const r of x.returned) exchangedBack.set(r.lineItemId, (exchangedBack.get(r.lineItemId) || 0) + r.quantity);
+    const isExchangeRefund = (r) => {
+      const n = r.refundLineItems.nodes;
+      if (!n.length || !n.every((l) => (exchangedBack.get(l.lineItem.id) || 0) >= l.quantity)) return false;
+      for (const l of n) exchangedBack.set(l.lineItem.id, exchangedBack.get(l.lineItem.id) - l.quantity);
+      return true;
+    };
     const addedIds = new Set(exchanges.flatMap((x) => x.added));
 
     const order = normaliseOrder(o);
@@ -108,8 +122,8 @@ export function buildRows(orders, locationId, { start, end }, excludedNames = ne
 
     const refunds = [...o.refunds].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     refunds.forEach((r, i) => {
+      if (isExchangeRefund(r)) return; // part of an exchange, not money back
       if (!inWindow(r.createdAt)) return;
-      if (r.return && exchangeReturnIds.has(r.return.id)) return; // part of an exchange
       const lines = r.refundLineItems.nodes.map((n) => ({ lineItemId: n.lineItem.id, quantity: n.quantity }));
       if (!lines.length) {
         // Money-only refund with no items returned: can't be split into

@@ -72,13 +72,20 @@ export function createShopify({ shop, clientId, clientSecret, fetchImpl = fetch,
         out.push(...data.orders.nodes);
         after = data.orders.pageInfo.hasNextPage ? data.orders.pageInfo.endCursor : null;
       } while (after);
+      // Orders with a refund also get their sales history ("agreements"):
+      // that's where POS exchanges show up (returned + newly added items).
+      for (const o of out) {
+        if (!o.refunds?.length) continue;
+        const d = await graphql(AGREEMENTS, { id: o.id });
+        o.agreements = d.order?.agreements?.nodes || [];
+      }
       return out;
     },
   };
 }
 
 const ORDERS = `query FeedOrders($q: String!, $after: String) {
-  orders(first: 10, after: $after, query: $q, sortKey: PROCESSED_AT) {
+  orders(first: 25, after: $after, query: $q, sortKey: PROCESSED_AT) {
     pageInfo { hasNextPage endCursor }
     nodes {
       id name processedAt sourceName taxesIncluded currencyCode test tags
@@ -89,13 +96,17 @@ const ORDERS = `query FeedOrders($q: String!, $after: String) {
         discountAllocations { allocatedAmountSet { shopMoney { amount } } }
         taxLines { rate priceSet { shopMoney { amount } } }
       } }
-      refunds { id createdAt return { id } refundLineItems(first: 100) { nodes { quantity lineItem { id } } } }
-      returns(first: 5) { nodes {
-        id createdAt
-        returnLineItems(first: 20) { nodes { ... on ReturnLineItem { quantity fulfillmentLineItem { lineItem { id } } } } }
-        exchangeLineItems(first: 10) { nodes { lineItems { id } } }
-      } }
+      refunds { id createdAt refundLineItems(first: 100) { nodes { quantity lineItem { id } } } }
       metafield(namespace: "$app", key: "reem_feed") { value }
     }
+  }
+}`;
+
+const AGREEMENTS = `query FeedAgreements($id: ID!) {
+  order(id: $id) {
+    agreements(first: 20) { nodes {
+      happenedAt reason
+      sales(first: 30) { nodes { actionType quantity ... on ProductSale { lineItem { id } } } }
+    } }
   }
 }`;
