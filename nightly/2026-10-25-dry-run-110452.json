@@ -1,0 +1,11 @@
+{
+  "mode": "dry-run",
+  "day": "2026-10-25",
+  "ranAt": "2026-11-05T11:04:52.156Z",
+  "logEnabled": false,
+  "location": "Reem Mall Shop",
+  "error": {
+    "message": "Shopify: Access denied for returns field."
+  },
+  "status": "dry-run"
+}
