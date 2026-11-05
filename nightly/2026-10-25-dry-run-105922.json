@@ -1,0 +1,11 @@
+{
+  "mode": "dry-run",
+  "day": "2026-10-25",
+  "ranAt": "2026-11-05T10:59:21.617Z",
+  "logEnabled": false,
+  "location": "Reem Mall Shop",
+  "error": {
+    "message": "Shopify: Query cost is 1794, which exceeds the single query max cost limit (1000).\n\nSee https://shopify.dev/docs/api/usage/rate-limits for more information on how the\ncost of a query is calculated.\n\nTo query larger amounts of data with fewer limits, bulk operations should be used instead.\nSee https://shopify.dev/docs/api/usage/bulk-operations/queries for usage details.\n"
+  },
+  "status": "dry-run"
+}
