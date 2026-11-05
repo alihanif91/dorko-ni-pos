@@ -78,7 +78,7 @@ export function createShopify({ shop, clientId, clientSecret, fetchImpl = fetch,
 }
 
 const ORDERS = `query FeedOrders($q: String!, $after: String) {
-  orders(first: 50, after: $after, query: $q, sortKey: PROCESSED_AT) {
+  orders(first: 10, after: $after, query: $q, sortKey: PROCESSED_AT) {
     pageInfo { hasNextPage endCursor }
     nodes {
       id name processedAt sourceName taxesIncluded currencyCode test tags
@@ -90,10 +90,10 @@ const ORDERS = `query FeedOrders($q: String!, $after: String) {
         taxLines { rate priceSet { shopMoney { amount } } }
       } }
       refunds { id createdAt return { id } refundLineItems(first: 100) { nodes { quantity lineItem { id } } } }
-      returns(first: 20) { nodes {
+      returns(first: 5) { nodes {
         id createdAt
-        returnLineItems(first: 50) { nodes { ... on ReturnLineItem { quantity fulfillmentLineItem { lineItem { id } } } } }
-        exchangeLineItems(first: 50) { nodes { lineItems { id } } }
+        returnLineItems(first: 20) { nodes { ... on ReturnLineItem { quantity fulfillmentLineItem { lineItem { id } } } } }
+        exchangeLineItems(first: 10) { nodes { lineItems { id } } }
       } }
       metafield(namespace: "$app", key: "reem_feed") { value }
     }
