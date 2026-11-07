@@ -1,0 +1,11 @@
+{
+  "mode": "send",
+  "day": "2026-11-06",
+  "ranAt": "2026-11-07T00:57:52.904Z",
+  "logEnabled": true,
+  "error": {
+    "message": "Shopify token request failed (500)"
+  },
+  "logged": true,
+  "status": "failed"
+}
